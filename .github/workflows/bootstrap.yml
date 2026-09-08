@@ -1,8 +1,6 @@
-name: One-time SyntheticForge repository bootstrap
+name: One-time SyntheticForge exact release bootstrap
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -10,31 +8,31 @@ permissions:
   contents: write
 
 jobs:
-  unpack-release:
+  reconstruct:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Expand verified release files
+      - name: Reconstruct and verify exact v0.5 release
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f .bootstrap2/chunk00.b64 ]; then
-            echo "Bootstrap already completed."
-            exit 0
-          fi
-          cat .bootstrap2/chunk*.b64 | tr -d '\n' | base64 --decode > /tmp/syntheticforge-missing.tar.gz
-          tar -xzf /tmp/syntheticforge-missing.tar.gz
-          rm -rf .bootstrap2 .bootstrap .syntheticforge-init .bootstrap-trigger
+          git checkout -B main origin/main
+          cat .bootstrap-final/part* | tr -d '\n' | base64 --decode > /tmp/syntheticforge-v05.tar.gz
+          echo "7341ab10b32f67a832a30c293dfceaca7afd5e6da73650e7930faee5978328d2  /tmp/syntheticforge-v05.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/syntheticforge-v05.tar.gz
+          rm -rf .bootstrap-final .bootstrap2 .bootstrap .syntheticforge-init .bootstrap-trigger
+          rm -f .github/workflows/bootstrap.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          if git diff --cached --quiet; then
-            echo "No files to commit."
-            exit 0
-          fi
-          git commit -m "feat: add complete SyntheticForge AI v0.5 release"
+          ACTUAL_TREE="$(git write-tree)"
+          EXPECTED_TREE="7b1544c58ff535c64b28ccf90ad6722103b172af"
+          echo "actual tree:   $ACTUAL_TREE"
+          echo "expected tree: $EXPECTED_TREE"
+          test "$ACTUAL_TREE" = "$EXPECTED_TREE"
+          git commit -m "feat: check in complete SyntheticForge AI v0.5 release"
           git push origin HEAD:main
