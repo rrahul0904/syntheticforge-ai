@@ -1,0 +1,19 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+*.pyc
+.DS_Store
+exports/
+
+# SyntheticForge local state / secrets
+.syntheticforge/
+syntheticforge.db
+*.db-journal
+*.sqlite-journal
+*.sqlite3-journal
+.env.*
+!.env.example
+artifacts/
+datasets/
+*.zip
