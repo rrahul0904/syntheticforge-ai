@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>SyntheticForge AI</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-mark">SF</div>
+      <div><strong>SyntheticForge</strong><span>AI data laboratory</span></div>
+      <span class="local-pill">LOCAL</span>
+    </div>
+    <nav class="side-nav" aria-label="Primary navigation">
+      <button class="nav-item active" data-view="dashboard"><span>⌂</span><b>Dashboard</b></button>
+      <button class="nav-item" data-view="generate"><span>✦</span><b>Generate</b></button>
+      <button class="nav-item" data-view="connectors"><span>⇄</span><b>Connectors</b></button>
+      <button class="nav-item" data-view="projects"><span>▣</span><b>Projects & datasets</b></button>
+      <button class="nav-item" data-view="jobs"><span>◫</span><b>Jobs</b></button>
+      <button class="nav-item" data-view="agents"><span>◎</span><b>Agent runs</b></button>
+      <button class="nav-item" data-view="settings"><span>⚙</span><b>Settings</b></button>
+      <button class="nav-item" data-view="diagnostics"><span>⌁</span><b>Diagnostics</b></button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="privacy-note"><span class="status-dot good"></span><div><strong>Privacy-first</strong><small>Read-only sources by default</small></div></div>
+      <div id="aiBadge" class="provider-chip">AI: checking…</div>
+    </div>
+  </aside>
+
+  <div class="main-shell">
+    <header class="topbar">
+      <div><p class="top-eyebrow">SYNTHETIC DATA CONTROL PLANE</p><h1 id="viewTitle">Dashboard</h1></div>
+      <div class="top-actions"><span id="healthChip" class="health-chip"><i></i>Checking service</span><button class="ghost-button" id="refreshBtn">Refresh</button><button class="accent-button" data-go="generate">New generation</button></div>
+    </header>
+
+    <main class="content">
+      <section class="view active" id="dashboardView" data-title="Dashboard">
+        <div class="hero-card">
+          <div class="hero-copy"><span class="kicker">SYSTEM-AWARE SYNTHETIC DATA</span><h2>Build production-shaped test data without exposing production data.</h2><p>Import a schema, connect read-only to a database, or describe a system in plain English. SyntheticForge preserves relationships, constraints, semantics and test scenarios.</p><div class="hero-actions"><button class="accent-button" data-go="generate">Create dataset</button><button class="ghost-button" data-go="connectors">Inspect a source</button></div></div>
+          <div class="hero-visual" aria-hidden="true"><div class="node n1">source</div><div class="node n2">model</div><div class="node n3">generate</div><div class="node n4">validate</div><div class="node n5">dataset</div><svg viewBox="0 0 420 220"><path d="M55 110 C115 30 160 30 210 85 S305 175 367 110"/><path d="M55 110 C135 200 225 190 367 110"/></svg></div>
+        </div>
+        <div class="stat-grid">
+          <article class="stat-card"><span>Projects</span><strong id="dashProjects">—</strong><small>persisted locally</small></article>
+          <article class="stat-card"><span>Jobs</span><strong id="dashJobs">—</strong><small id="dashJobState">generation history</small></article>
+          <article class="stat-card"><span>Connectors</span><strong id="dashConnectors">8</strong><small id="dashConnectorState">checking drivers</small></article>
+          <article class="stat-card"><span>Generated rows</span><strong id="dashRows">—</strong><small>current process</small></article>
+        </div>
+        <div class="two-col dashboard-lower">
+          <section class="surface"><div class="surface-head"><div><span class="kicker">RECENT WORK</span><h3>Projects</h3></div><button class="text-button" data-go="projects">View all →</button></div><div id="recentProjects" class="item-list skeleton-block">Loading projects…</div></section>
+          <section class="surface"><div class="surface-head"><div><span class="kicker">ENGINE STATUS</span><h3>Capability health</h3></div></div><div class="capability-list"><div><span>Relational generation</span><b class="ok">Operational</b></div><div><span>Validation & quality</span><b class="ok">Operational</b></div><div><span>Source profiling</span><b class="ok">Operational</b></div><div><span>Streaming generation</span><b class="ok">Operational</b></div><div><span>Parquet export</span><b id="parquetStatus">Checking</b></div></div></section>
+        </div>
+      </section>
+
+      <section class="view" id="generateView" data-title="Generate synthetic data">
+        <div class="view-intro"><div><span class="kicker">GENERATION WORKSPACE</span><h2>Model a system, generate it, prove it.</h2><p>Normal mode protects constraints. Negative-testing mode is explicit and isolated.</p></div><div class="segmented" role="tablist"><button class="workspace-tab active" data-workspace="system">System / schema</button><button class="workspace-tab" data-workspace="single">Single table</button></div></div>
+
+        <div id="systemWorkspace" class="workspace-grid">
+          <section class="surface form-surface">
+            <div class="surface-head"><div><span class="step">01</span><h3>Source model</h3></div><span class="mini-pill">No source rows required</span></div>
+            <div class="field-grid">
+              <label>Database type<select id="sysDatabaseType"><option>postgresql</option><option>mysql</option><option>sqlserver</option><option>oracle</option><option>snowflake</option><option>bigquery</option><option>redshift</option><option>sqlite</option></select></label>
+              <label>Database name<input id="sysDatabaseName" value="hospitality" /></label>
+              <label>Default schema<input id="sysSchemaName" value="prod" /></label>
+              <label>Input format<select id="sysInputFormat"><option value="ddl">SQL DDL</option><option value="json">JSON Schema / Catalog</option><option value="openapi">OpenAPI 3.x JSON</option><option value="avro">Avro schema JSON</option><option value="csv">CSV sample</option><option value="description">Natural-language system</option><option value="sqlite-db">SQLite database path</option></select></label>
+            </div>
+            <label>Schema / contract<textarea id="sysSchemaInput" class="code-input" rows="16">CREATE TABLE prod.guests (
+  guest_id BIGINT PRIMARY KEY,
+  first_name VARCHAR(80) NOT NULL,
+  last_name VARCHAR(80) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  loyalty_tier VARCHAR(30)
+);
+CREATE TABLE prod.reservations (
+  reservation_id BIGINT PRIMARY KEY,
+  guest_id BIGINT NOT NULL REFERENCES prod.guests(guest_id),
+  check_in_date DATE NOT NULL,
+  check_out_date DATE NOT NULL,
+  status VARCHAR(30) NOT NULL,
+  nightly_rate DECIMAL(10,2) NOT NULL
+);
+CREATE TABLE prod.payments (
+  payment_id BIGINT PRIMARY KEY,
+  reservation_id BIGINT NOT NULL REFERENCES prod.reservations(reservation_id),
+  amount DECIMAL(10,2) NOT NULL,
+  currency VARCHAR(3) NOT NULL,
+  payment_status VARCHAR(30) NOT NULL
+);</textarea></label>
+            <label>Scenario / business rules<textarea id="sysScenario" rows="3">Generate a realistic hotel QA dataset with 12% cancellations and coherent reservation dates.</textarea></label>
+            <div class="field-grid compact-fields"><label>Rows / table<input id="sysRowCount" type="number" value="30" min="1" max="100000" /></label><label>Seed<input id="sysSeed" type="number" value="42" min="0" /></label><label class="toggle-field"><span>Negative testing</span><input id="negativeTesting" type="checkbox" /></label><label>Edge-case rate<input id="edgeCaseRate" type="number" value="0" min="0" max="1" step="0.01" /></label></div>
+            <div class="button-row"><button class="ghost-button" id="parseSystemBtn">Parse model</button><button class="accent-button grow" id="generateSystemBtn">Generate & validate</button><button class="ghost-button" id="exportSystemBtn" disabled>Export ZIP</button></div>
+            <div id="systemStatus" class="inline-status">Ready for a system definition.</div>
+          </section>
+
+          <section class="surface result-surface">
+            <div class="surface-head result-head"><div><span class="step">02</span><h3>Generated environment</h3><p id="generationOrder">Parse a schema to inspect its dependency graph.</p></div><span id="validationBadge" class="quality-badge">NOT RUN</span></div>
+            <div class="metric-strip"><div><span>Tables</span><strong id="tableCount">0</strong></div><div><span>Relationships</span><strong id="relationshipCount">0</strong></div><div><span>Rows</span><strong id="systemRowTotal">0</strong></div><div><span>Quality</span><strong id="qualityScore">—</strong></div></div>
+            <div id="tableTabs" class="table-tabs"><span class="empty-copy">No tables loaded.</span></div>
+            <div class="table-detail-head"><div><strong id="activeTableName">—</strong><small id="activeTableMeta">No active table</small></div><div id="activeTableRelations" class="relations"></div></div>
+            <div class="table-wrap system-table-wrap"><table id="systemResultTable"><thead></thead><tbody><tr><td class="placeholder">Generate a system to preview synthetic rows.</td></tr></tbody></table></div>
+            <div class="validation-summary"><div><span id="systemWarning">Relationship engine idle</span></div><span id="systemPreviewCount">0 rows</span></div>
+          </section>
+        </div>
+
+        <div id="singleWorkspace" class="workspace-grid hidden">
+          <section class="surface form-surface"><div class="surface-head"><div><span class="step">01</span><h3>Target table</h3></div></div><div class="field-grid"><label>Database<select id="databaseType"><option>postgresql</option><option>mysql</option><option>sqlserver</option><option>oracle</option><option>snowflake</option><option>bigquery</option><option>redshift</option><option>sqlite</option></select></label><label>Database name<input id="databaseName" value="hospitality" /></label><label>Schema<input id="schemaName" value="prod" /></label><label>Table<input id="tableName" value="reservations" /></label></div><label>Business context<textarea id="scenario" rows="3">Hotel reservation platform with US and international guests.</textarea></label><div class="field-grid compact-fields"><label>Rows<input id="rowCount" type="number" value="25" min="1" max="10000" /></label><label>Seed<input id="seed" type="number" value="42" min="0" /></label></div><div class="button-row"><button class="ghost-button" id="inferBtn">Infer schema</button><button class="accent-button grow" id="generateBtn">Generate data</button></div><div class="section-divider"><span>Inferred schema</span></div><div id="schemaGrid" class="schema-grid empty">No schema inferred yet.</div></section>
+          <section class="surface result-surface"><div class="surface-head"><div><span class="step">02</span><h3>Generated records</h3><p id="status">Ready</p></div><div class="export-group"><button data-export="csv">CSV</button><button data-export="json">JSON</button><button data-export="sql">SQL</button><button data-export="ndjson">JSONL</button></div></div><div class="table-wrap"><table id="resultTable"><thead></thead><tbody><tr><td class="placeholder">Generate data to preview rows.</td></tr></tbody></table></div><div class="validation-summary"><span id="modeLabel">Mode: —</span><span id="rowLabel">0 rows</span></div></section>
+        </div>
+      </section>
+
+      <section class="view" id="connectorsView" data-title="Connectors">
+        <div class="view-intro"><div><span class="kicker">SOURCE & TARGET ADAPTERS</span><h2>Connect without coupling.</h2><p>Source introspection is read-only by default. Target loading requires an explicit writable target configuration.</p></div><button class="ghost-button" id="reloadConnectors">Reload status</button></div>
+        <div id="connectorGrid" class="connector-grid"></div>
+        <div class="two-col connector-tools">
+          <section class="surface"><div class="surface-head"><div><span class="kicker">CONNECTION TEST</span><h3>Test a connector</h3></div></div><div class="field-grid"><label>Connector<select id="connectorType"><option>sqlite</option><option>postgresql</option><option>mysql</option><option>sqlserver</option><option>oracle</option><option>snowflake</option><option>bigquery</option><option>redshift</option></select></label><label>Database / path<input id="connectorDatabase" placeholder="/tmp/source.db or database" /></label><label>Host<input id="connectorHost" placeholder="localhost" /></label><label>Port<input id="connectorPort" type="number" placeholder="5432" /></label><label>Username<input id="connectorUser" autocomplete="off" /></label><label>Password<input id="connectorPassword" type="password" autocomplete="new-password" /></label></div><label>Schema<input id="connectorSchema" placeholder="public / main" /></label><div class="button-row"><button class="accent-button" id="testConnectorBtn">Test connection</button><button class="ghost-button" id="inspectConnectorBtn">Inspect schema</button></div><div id="connectorResult" class="inline-status">Credentials stay in this request and are not persisted by this screen.</div></section>
+          <section class="surface"><div class="surface-head"><div><span class="kicker">SCHEMA EXPLORER</span><h3>Discovered model</h3></div><span id="introspectCount" class="mini-pill">0 tables</span></div><div id="introspectionTree" class="schema-tree empty-copy">Connect to a source and inspect its metadata.</div></section>
+        </div>
+      </section>
+
+      <section class="view" id="projectsView" data-title="Projects & datasets">
+        <div class="view-intro"><div><span class="kicker">PERSISTENT LOCAL WORKSPACES</span><h2>Recipes, datasets and immutable versions.</h2><p>Recreate a dataset from its seed and compare versions as schemas or scenarios evolve.</p></div><button class="accent-button" id="newProjectBtn">New project</button></div>
+        <div id="projectCreatePanel" class="surface compact-panel hidden"><div class="field-grid"><label>Project name<input id="projectName" placeholder="Hospitality QA" /></label><label>Description<input id="projectDescription" placeholder="Synthetic QA datasets for booking workflows" /></label></div><div class="button-row"><button class="accent-button" id="saveProjectBtn">Create project</button><button class="ghost-button" id="cancelProjectBtn">Cancel</button></div></div>
+        <div class="two-col projects-layout"><section class="surface"><div class="surface-head"><div><span class="kicker">WORKSPACES</span><h3>Projects</h3></div></div><div id="projectList" class="item-list">Loading…</div></section><section class="surface"><div class="surface-head"><div><span class="kicker">DATASET HISTORY</span><h3 id="datasetTitle">Select a project</h3></div></div><div id="datasetList" class="item-list empty-copy">Dataset versions will appear here.</div></section></div>
+      </section>
+
+      <section class="view" id="jobsView" data-title="Jobs">
+        <div class="view-intro"><div><span class="kicker">DURABLE ORCHESTRATION</span><h2>Generation history and state.</h2><p>Queued, generating, validating, completed, failed and cancelled jobs are persisted locally.</p></div><button class="ghost-button" id="reloadJobs">Refresh jobs</button></div>
+        <section class="surface"><div class="jobs-table" id="jobsList">Loading jobs…</div></section>
+      </section>
+
+      <section class="view" id="agentsView" data-title="Agent runs">
+        <div class="view-intro"><div><span class="kicker">AGENTIC SYNTHETIC DATA</span><h2>Give SyntheticForge a goal. Watch it plan, act, validate and repair.</h2><p>The agent uses a constrained tool registry. Source access remains read-only and target writes require a separate human approval action.</p></div><button class="ghost-button" id="reloadAgents">Refresh runs</button></div>
+        <div class="two-col agent-layout">
+          <section class="surface form-surface">
+            <div class="surface-head"><div><span class="step">01</span><h3>Agent goal</h3></div><span class="mini-pill">95% quality gate</span></div>
+            <label>Goal<textarea id="agentGoal" rows="8">Create a realistic hospitality QA environment with hotels, rooms, guests, reservations, payments and cancellations. Make 12% of reservations cancelled and preserve payment/date consistency.</textarea></label>
+            <div class="field-grid compact-fields"><label>Database<select id="agentDatabaseType"><option>postgresql</option><option>mysql</option><option>sqlserver</option><option>oracle</option><option>snowflake</option><option>bigquery</option><option>redshift</option><option>sqlite</option></select></label><label>Database name<input id="agentDatabaseName" value="hospitality" /></label><label>Schema<input id="agentSchema" value="prod" /></label><label>Rows / table<input id="agentRows" type="number" value="40" min="1" max="1000000" /></label><label>Quality gate<input id="agentQuality" type="number" value="95" min="0" max="100" step="0.1" /></label><label>Seed<input id="agentSeed" type="number" value="42" min="0" /></label></div>
+            <div class="button-row"><button class="accent-button grow" id="startAgentBtn">Start agent run</button><button class="ghost-button" id="cancelAgentBtn" disabled>Cancel</button><button class="ghost-button" id="downloadAgentBtn" disabled>Download ZIP</button></div>
+            <div id="agentStatus" class="inline-status">Ready. The deterministic agent works without an external AI provider.</div>
+            <div class="section-divider"><span>Recent agent runs</span></div><div id="agentRunList" class="item-list"><div class="empty-copy">No agent runs yet.</div></div>
+          </section>
+          <section class="surface result-surface">
+            <div class="surface-head result-head"><div><span class="step">02</span><h3>Execution trace</h3><p id="agentRunMeta">No active agent run.</p></div><span id="agentQualityBadge" class="quality-badge">IDLE</span></div>
+            <div class="metric-strip"><div><span>State</span><strong id="agentState">—</strong></div><div><span>Step</span><strong id="agentStep">—</strong></div><div><span>Repairs</span><strong id="agentRepairs">0</strong></div><div><span>Quality</span><strong id="agentQualityScore">—</strong></div></div>
+            <div id="agentTrace" class="agent-trace"><div class="empty-copy">Start an agent run to see PLAN → TOOL → OBSERVATION → VALIDATION → REPAIR events.</div></div>
+            <div id="agentApproval" class="approval-card hidden"><strong>Target loading is gated</strong><p>The generated ZIP is ready. Loading into a database requires an explicit writable target connection and approval.</p></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="settingsView" data-title="Settings">
+        <div class="view-intro"><div><span class="kicker">LOCAL AI CONFIGURATION</span><h2>Bring your model. Keep the key out of project state.</h2><p>Provider credentials entered here live only in the current SyntheticForge process session. They are never returned by the status API or stored in recipes/datasets.</p></div></div>
+        <div class="two-col">
+          <section class="surface form-surface"><div class="surface-head"><div><span class="step">01</span><h3>AI provider</h3></div><span id="providerSessionBadge" class="mini-pill">SMART LOCAL</span></div>
+            <div class="field-grid"><label>Provider<select id="providerType"><option value="none">Smart local only</option><option value="openai-compatible">OpenAI-compatible</option><option value="ollama">Ollama</option></select></label><label>Model<input id="providerModel" placeholder="model-id" autocomplete="off" /></label><label>Base URL<input id="providerBaseUrl" placeholder="http://localhost:11434 or provider endpoint" autocomplete="off" /></label><label>API key<input id="providerApiKey" type="password" placeholder="Session only" autocomplete="new-password" /></label></div>
+            <div class="button-row"><button class="accent-button" id="saveProviderBtn">Use for this session</button><button class="ghost-button" id="clearProviderBtn">Clear provider</button></div><div id="providerStatus" class="inline-status">Loading provider state…</div>
+          </section>
+          <section class="surface"><div class="surface-head"><div><span class="kicker">SAFETY BOUNDARY</span><h3>What the AI can and cannot do</h3></div></div><div class="capability-list"><div><span>Propose agent plan</span><b class="ok">Allowed</b></div><div><span>Model schemas & repair suggestions</span><b class="ok">Allowed</b></div><div><span>Remove validation/privacy gates</span><b>Blocked</b></div><div><span>Invent arbitrary tools / shell execution</span><b>Blocked</b></div><div><span>Write target without human approval</span><b>Blocked</b></div><div><span>Persist API key</span><b>Blocked</b></div></div></section>
+        </div>
+      </section>
+
+      <section class="view" id="diagnosticsView" data-title="Diagnostics">
+        <div class="view-intro"><div><span class="kicker">LOCAL OPERATIONS</span><h2>Health, observability and privacy boundaries.</h2><p>No Vercel deployment. Runtime state, audit events and diagnostics remain local to this installation.</p></div></div>
+        <div class="stat-grid"><article class="stat-card"><span>Service</span><strong id="diagService">—</strong><small>readiness</small></article><article class="stat-card"><span>State store</span><strong id="diagState">—</strong><small>SQLite persistence</small></article><article class="stat-card"><span>Upload guard</span><strong id="diagUpload">—</strong><small>configured maximum</small></article><article class="stat-card"><span>Parquet</span><strong id="diagParquet">—</strong><small>optional driver</small></article></div>
+        <div class="two-col"><section class="surface"><div class="surface-head"><div><span class="kicker">METRICS</span><h3>Runtime counters</h3></div></div><pre id="metricsPanel" class="diagnostic-panel">Loading…</pre></section><section class="surface"><div class="surface-head"><div><span class="kicker">AUDIT TRAIL</span><h3>Recent sensitive operations</h3></div></div><div id="auditList" class="item-list">Loading…</div></section></div>
+      </section>
+    </main>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -98,7 +98,7 @@ def _load_tables_from_archive(path:Path)->list[GeneratedTable]:
     with zipfile.ZipFile(path) as zf:
         manifest=json.loads(zf.read("manifest.json")); meta={(t["schema"],t["table"]):t for t in manifest["tables"]}
         for (schema,name),m in meta.items():
-            csv_name=f"tables/{schema}.{name}.csv"; rows=list(csv.DictReader(io.StringIO(zf.read(csv_name).decode()))
+            csv_name=f"tables/{schema}.{name}.csv"; rows=list(csv.DictReader(io.StringIO(zf.read(csv_name).decode())))
             cols=[ColumnSpec.model_validate(c) for c in m["columns"]]
             # CSV preserves transport strings; database drivers can coerce common types, and nulls are normalized.
             normalized=[]

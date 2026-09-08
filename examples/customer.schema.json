@@ -1,0 +1,13 @@
+{
+  "title": "customers",
+  "type": "object",
+  "required": ["customer_id", "email", "created_at"],
+  "properties": {
+    "customer_id": {"type": "integer", "primary_key": true},
+    "first_name": {"type": "string"},
+    "last_name": {"type": "string"},
+    "email": {"type": "string", "format": "email", "unique": true},
+    "is_active": {"type": "boolean"},
+    "created_at": {"type": "string", "format": "date-time"}
+  }
+}

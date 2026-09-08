@@ -1,0 +1,38 @@
+services:
+  syntheticforge:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      SYNTHETICFORGE_HOME: /data
+      SYNTHETICFORGE_CORS_ORIGINS: http://localhost:8000
+    volumes: ["syntheticforge-data:/data"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      mysql: {condition: service_healthy}
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: syntheticforge
+      POSTGRES_PASSWORD: syntheticforge_local
+      POSTGRES_DB: syntheticforge_demo
+    ports: ["54329:5432"]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U syntheticforge -d syntheticforge_demo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: syntheticforge_local
+      MYSQL_DATABASE: syntheticforge_demo
+      MYSQL_USER: syntheticforge
+      MYSQL_PASSWORD: syntheticforge_local
+    ports: ["33069:3306"]
+    healthcheck:
+      test: ["CMD","mysqladmin","ping","-h","localhost","-psyntheticforge_local"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+volumes:
+  syntheticforge-data: {}
