@@ -165,6 +165,19 @@ syntheticforge load --dataset <dataset-id> --target postgres
 
 Run `syntheticforge --help` for the commands available in this build.
 
+
+## Engineering workflow
+
+The repository includes repeatable local and CI checks:
+
+```bash
+make install-dev
+make verify
+make demo
+```
+
+GitHub Actions runs the test suite on Python 3.11 and 3.12, compiles Python modules, checks the browser JavaScript syntax, executes the SQLite source-to-target roundtrip, and verifies the CLI entry point. See `docs/DEVELOPMENT.md` for the development and release workflow.
+
 ## Verification in this build
 
 Current local evidence:
