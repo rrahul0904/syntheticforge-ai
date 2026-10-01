@@ -52,6 +52,12 @@ def test_mysql_foreign_key_introspection_uses_key_column_usage():
     assert calls[0][1] == ["sf_source", "orders"]
 
 
+def test_mysql_column_metadata_keys_are_normalized():
+    connector = MySQLConnector(ConnectorConfig(connector="mysql"))
+    connector._query_dicts = lambda sql, params=None: [{"COLUMN_NAME": "customer_id", "DATA_TYPE": "int"}]
+    assert connector._column_rows("orders", "sf_source") == [{"column_name": "customer_id", "data_type": "int"}]
+
+
 def test_sqlite_connector_contract_and_profile(tmp_path):
     db=tmp_path/"source.db"; c=sqlite3.connect(db)
     c.executescript("""

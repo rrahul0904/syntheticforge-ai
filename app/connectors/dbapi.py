@@ -214,6 +214,14 @@ class MySQLConnector(InformationSchemaConnector):
     def list_schemas(self) -> list[str]:
         return self.list_databases()
 
+    def _column_rows(self, table: str, schema: str) -> list[dict[str, Any]]:
+        # MySQL returns information_schema column labels in uppercase through
+        # some DB-API drivers; normalize metadata keys without changing row data.
+        return [
+            {str(key).lower(): value for key, value in row.items()}
+            for row in super()._column_rows(table, schema)
+        ]
+
     def _foreign_keys(self, table: str, schema: str) -> list[ForeignKeySpec]:
         # MySQL exposes the referenced side directly on KEY_COLUMN_USAGE;
         # it does not provide information_schema.CONSTRAINT_COLUMN_USAGE.
