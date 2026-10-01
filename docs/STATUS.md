@@ -2,7 +2,7 @@
 
 ## Release state
 
-SyntheticForge AI is a v1.0.0-rc1 candidate. The release retains local-first deterministic operation and adds a fail-closed single-node production mode. It is not deployed and the external CI, PostgreSQL/MySQL service, and full browser certification gates are pending.
+SyntheticForge AI is a v1.0.0-rc1 candidate. The release retains local-first deterministic operation and adds a fail-closed single-node production mode. It is not deployed. The local browser journey passed; hosted CI and PostgreSQL/MySQL service-container certification remain pending.
 
 Current local verification on the checked-in code line:
 

@@ -5,7 +5,7 @@ This is a live evidence record. Pending items are explicit; documentation of a p
 | Evidence | Result |
 |---|---|
 | Repository | `rrahul0904/syntheticforge-ai` |
-| Implementation branch / tested source commit | `codex/syntheticforge-v1-production` / exact implementation commit recorded after commit; final HEAD may add this evidence file only |
+| Implementation branch / tested source commit | `codex/syntheticforge-v1-production` / `30ef1486cd144239ad7434f395d83a37e22505eb` |
 | Candidate version | `1.0.0-rc1` |
 | Verification date | 2026-10-01 |
 | Baseline test count | 61 passed before implementation changes |
@@ -23,8 +23,8 @@ This is a live evidence record. Pending items are explicit; documentation of a p
 | Production security | Passed fail-closed config, auth/CSRF/roles/logout, source connector policy, receipt redaction, exact write approval, expiry/replay, and interactive row-limit tests |
 | Deployment URL | None. `DEPLOYMENT_READY_BUT_NOT_EXECUTED` |
 | Tracker workbook | Not modified; proposal recorded in `PROJECT_TRACKER_UPDATE.md` |
-| Hosted CI | Workflow configured; no run result because branch push credentials are unavailable |
+| Hosted CI | Workflow configured; no run result because GitHub CLI is absent and push credentials are unavailable |
 
 ## Explicit non-claims
 
-This candidate does not claim external deployment, universal connector certification, external AI certification, horizontal scalability, or HIPAA/GDPR/SOC 2 certification. The authoritative state backend remains single-node SQLite. Browser and container checks that have not executed remain pending.
+This candidate does not claim external deployment, universal connector certification, external AI certification, horizontal scalability, or HIPAA/GDPR/SOC 2 certification. The authoritative state backend remains single-node SQLite. Browser checks passed locally; container build/smoke and hosted CI remain pending.

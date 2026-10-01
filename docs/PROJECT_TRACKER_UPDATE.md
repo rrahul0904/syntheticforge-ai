@@ -8,7 +8,7 @@ Tracker workbook update state: **not modified**. The canonical tracker workbook 
 | Former name | AI Test Data Creator |
 | Repository | `rrahul0904/syntheticforge-ai` |
 | Relationship | Canonical product |
-| Current exact SHA | Fill with release evidence commit SHA after final commit |
+| Current exact SHA | `30ef1486cd144239ad7434f395d83a37e22505eb` (implementation and tested source commit) |
 | Implementation state | v1.0.0-rc1 candidate; local baseline and production controls under verification |
 | Deployment state | `DEPLOYMENT_READY_BUT_NOT_EXECUTED` |
 | Last verified date | 2026-10-01 (local verification; hosted evidence pending) |
