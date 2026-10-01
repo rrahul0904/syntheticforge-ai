@@ -79,6 +79,8 @@ def test_database_source_is_read_only_and_target_load_is_separate(prefix: str, c
         adapter.connect()
         specs = adapter.introspect_system(source.schema_name)
         assert {table.name for table in specs} >= {"customers", "orders"}
+        orders = next(table for table in specs if table.name == "orders")
+        assert any(fk.references_table == "customers" and "customer_id" in fk.columns for fk in orders.foreign_keys)
         assert adapter.profile_table("orders", source.schema_name, limit=100).row_count >= 1
         with pytest.raises(Exception):
             adapter._query("UPDATE customers SET name='must fail' WHERE id=1")

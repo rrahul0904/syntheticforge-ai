@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.connectors import connector_statuses, create_connector
+from app.connectors.dbapi import MySQLConnector
 from app.connectors.sdk import connector_contract
 from app.intelligence import apply_correlations
 from app.loaders import load_table
@@ -28,6 +29,27 @@ client=TestClient(app)
 def test_connector_registry_has_all_enterprise_targets():
     names={s.connector for s in connector_statuses()}
     assert {"sqlite","postgresql","mysql","sqlserver","oracle","snowflake","bigquery","redshift"} <= names
+
+
+def test_mysql_foreign_key_introspection_uses_key_column_usage():
+    connector = MySQLConnector(ConnectorConfig(connector="mysql"))
+    calls = []
+
+    def query(sql, params=None):
+        calls.append((sql, params))
+        return [
+            ("fk_orders_customer", "customer_id", "customers", "id"),
+            ("fk_orders_customer", "customer_region", "customers", "region"),
+        ]
+
+    connector._query = query
+    foreign_keys = connector._foreign_keys("orders", "sf_source")
+    assert len(foreign_keys) == 1
+    assert foreign_keys[0].columns == ["customer_id", "customer_region"]
+    assert foreign_keys[0].references_columns == ["id", "region"]
+    assert "information_schema.key_column_usage" in calls[0][0]
+    assert "constraint_column_usage" not in calls[0][0]
+    assert calls[0][1] == ["sf_source", "orders"]
 
 
 def test_sqlite_connector_contract_and_profile(tmp_path):

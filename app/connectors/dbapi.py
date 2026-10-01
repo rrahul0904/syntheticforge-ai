@@ -214,6 +214,34 @@ class MySQLConnector(InformationSchemaConnector):
     def list_schemas(self) -> list[str]:
         return self.list_databases()
 
+    def _foreign_keys(self, table: str, schema: str) -> list[ForeignKeySpec]:
+        # MySQL exposes the referenced side directly on KEY_COLUMN_USAGE;
+        # it does not provide information_schema.CONSTRAINT_COLUMN_USAGE.
+        sql = f"""
+        SELECT constraint_name, column_name, referenced_table_name, referenced_column_name
+        FROM information_schema.key_column_usage
+        WHERE table_schema={self.param} AND table_name={self.param}
+          AND referenced_table_name IS NOT NULL
+        ORDER BY constraint_name, ordinal_position
+        """
+        grouped: dict[tuple[str, str], tuple[list[str], list[str]]] = {}
+        for name, column, ref_table, ref_column in self._query(sql, [schema, table]):
+            key = (str(name), str(ref_table))
+            child, parent = grouped.setdefault(key, ([], []))
+            child.append(str(column))
+            parent.append(str(ref_column))
+        return [
+            ForeignKeySpec(
+                name=name,
+                column=children[0],
+                columns=children,
+                references_table=ref_table,
+                references_column=parents[0],
+                references_columns=parents,
+            )
+            for (name, ref_table), (children, parents) in grouped.items()
+        ]
+
 
 class SQLServerConnector(InformationSchemaConnector):
     connector_name = "sqlserver"
