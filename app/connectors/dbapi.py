@@ -155,14 +155,19 @@ class PostgreSQLConnector(InformationSchemaConnector):
         module = importlib.import_module(driver)
         kwargs = dict(host=self.config.host, port=self.config.port or 5432, dbname=self.config.database, user=self.config.username, password=self.config.password)
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        conn = module.connect(**kwargs)
-        if self.config.read_only:
-            try:
-                conn.autocommit = True
-                cur = conn.cursor(); cur.execute("SET default_transaction_read_only = on"); cur.close()
-            except Exception:
-                pass
-        return conn
+        return module.connect(**kwargs)
+
+    @property
+    def read_only_mechanism(self)->str:return "PostgreSQL default_transaction_read_only session setting"
+
+    def _set_read_only_if_supported(self)->None:
+        self._connection.autocommit=True
+        cur=self._connection.cursor()
+        try:
+            cur.execute("SET default_transaction_read_only = on")
+            cur.execute("SHOW default_transaction_read_only")
+            if str(cur.fetchone()[0]).lower() not in {"on","true","1"}:raise ConnectorError("PostgreSQL did not confirm read-only session enforcement")
+        finally:cur.close()
 
     def list_databases(self) -> list[str]:
         return [str(r[0]) for r in self._query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate ORDER BY datname")]
@@ -189,9 +194,19 @@ class MySQLConnector(InformationSchemaConnector):
         kwargs = dict(host=self.config.host or "localhost", port=self.config.port or 3306, user=self.config.username, password=self.config.password, database=self.config.database)
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
         if driver == "mysql.connector":
+            kwargs["autocommit"]=True
             return module.connect(**kwargs)
         kwargs["read_timeout"] = int(self.config.extra.get("read_timeout", 30))
+        kwargs["autocommit"]=True
         return module.connect(**kwargs)
+
+    @property
+    def read_only_mechanism(self)->str:return "MySQL START TRANSACTION READ ONLY"
+
+    def _set_read_only_if_supported(self)->None:
+        cur=self._connection.cursor()
+        try:cur.execute("START TRANSACTION READ ONLY")
+        finally:cur.close()
 
     def list_databases(self) -> list[str]:
         return [str(r[0]) for r in self._query("SHOW DATABASES")]
@@ -240,6 +255,14 @@ class OracleConnector(BaseConnector):
         oracledb = importlib.import_module("oracledb")
         dsn = self.config.extra.get("dsn") or oracledb.makedsn(self.config.host or "localhost", self.config.port or 1521, service_name=self.config.database)
         return oracledb.connect(user=self.config.username, password=self.config.password, dsn=dsn)
+
+    @property
+    def read_only_mechanism(self)->str:return "Oracle SET TRANSACTION READ ONLY"
+
+    def _set_read_only_if_supported(self)->None:
+        cur=self._connection.cursor()
+        try:cur.execute("SET TRANSACTION READ ONLY")
+        finally:cur.close()
 
     def list_databases(self) -> list[str]:
         return [self.config.database or "ORACLE"]

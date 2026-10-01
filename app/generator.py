@@ -14,6 +14,8 @@ from faker import Faker
 
 from .models import ColumnSpec, GenerateRequest, SchemaInferenceRequest, TableSpec
 
+GENERATION_REFERENCE_DATE = date(2026, 10, 1)
+
 
 TABLE_BLUEPRINTS: dict[str, list[dict[str, Any]]] = {
     "reservation": [
@@ -182,9 +184,9 @@ def _make_value(fake: Faker, rng: random.Random, col: ColumnSpec, row_index: int
     if semantic == "integer": return _bounded_number(rng, col, True)
     if semantic in {"decimal", "float"}: return _bounded_number(rng, col, False)
     if semantic == "boolean": return rng.choice([True, False])
-    if semantic == "date": return fake.date_between(start_date="-3y", end_date="today").isoformat()
-    if semantic == "future_date": return fake.date_between(start_date="today", end_date="+18M").isoformat()
-    if semantic == "past_datetime": return fake.date_time_between(start_date="-3y", end_date="now").isoformat(sep=" ", timespec="seconds")
+    if semantic == "date": return fake.date_between(start_date=date(2023, 10, 1), end_date=GENERATION_REFERENCE_DATE).isoformat()
+    if semantic == "future_date": return fake.date_between(start_date=GENERATION_REFERENCE_DATE, end_date=GENERATION_REFERENCE_DATE + timedelta(days=548)).isoformat()
+    if semantic == "past_datetime": return fake.date_time_between(start_date=datetime(2023, 10, 1), end_date=datetime(2026, 10, 1, 23, 59, 59)).isoformat(sep=" ", timespec="seconds")
     if semantic == "confirmation_code": return fit(f"{fake.lexify('???').upper()}-{rng.randint(100000,999999)}")
     if semantic == "choice":
         n = normalize_token(col.name)

@@ -34,7 +34,7 @@
   <div class="main-shell">
     <header class="topbar">
       <div><p class="top-eyebrow">SYNTHETIC DATA CONTROL PLANE</p><h1 id="viewTitle">Dashboard</h1></div>
-      <div class="top-actions"><span id="healthChip" class="health-chip"><i></i>Checking service</span><button class="ghost-button" id="refreshBtn">Refresh</button><button class="accent-button" data-go="generate">New generation</button></div>
+      <div class="top-actions"><span id="healthChip" class="health-chip"><i></i>Checking service</span><button class="ghost-button" id="refreshBtn">Refresh</button><button class="ghost-button hidden" id="logoutBtn">Sign out</button><button class="accent-button" data-go="generate">New generation</button></div>
     </header>
 
     <main class="content">
@@ -137,7 +137,7 @@ CREATE TABLE prod.payments (
           <section class="surface form-surface">
             <div class="surface-head"><div><span class="step">01</span><h3>Agent goal</h3></div><span class="mini-pill">95% quality gate</span></div>
             <label>Goal<textarea id="agentGoal" rows="8">Create a realistic hospitality QA environment with hotels, rooms, guests, reservations, payments and cancellations. Make 12% of reservations cancelled and preserve payment/date consistency.</textarea></label>
-            <div class="field-grid compact-fields"><label>Database<select id="agentDatabaseType"><option>postgresql</option><option>mysql</option><option>sqlserver</option><option>oracle</option><option>snowflake</option><option>bigquery</option><option>redshift</option><option>sqlite</option></select></label><label>Database name<input id="agentDatabaseName" value="hospitality" /></label><label>Schema<input id="agentSchema" value="prod" /></label><label>Rows / table<input id="agentRows" type="number" value="40" min="1" max="1000000" /></label><label>Quality gate<input id="agentQuality" type="number" value="95" min="0" max="100" step="0.1" /></label><label>Seed<input id="agentSeed" type="number" value="42" min="0" /></label></div>
+            <div class="field-grid compact-fields"><label>Database<select id="agentDatabaseType"><option>postgresql</option><option>mysql</option><option>sqlserver</option><option>oracle</option><option>snowflake</option><option>bigquery</option><option>redshift</option><option>sqlite</option></select></label><label>Database name<input id="agentDatabaseName" value="hospitality" /></label><label>Schema<input id="agentSchema" value="prod" /></label><label>Rows / table<input id="agentRows" type="number" value="40" min="1" max="100000" /></label><label>Quality gate<input id="agentQuality" type="number" value="95" min="0" max="100" step="0.1" /></label><label>Seed<input id="agentSeed" type="number" value="42" min="0" /></label></div>
             <div class="button-row"><button class="accent-button grow" id="startAgentBtn">Start agent run</button><button class="ghost-button" id="cancelAgentBtn" disabled>Cancel</button><button class="ghost-button" id="downloadAgentBtn" disabled>Download ZIP</button></div>
             <div id="agentStatus" class="inline-status">Ready. The deterministic agent works without an external AI provider.</div>
             <div class="section-divider"><span>Recent agent runs</span></div><div id="agentRunList" class="item-list"><div class="empty-copy">No agent runs yet.</div></div>
@@ -146,7 +146,7 @@ CREATE TABLE prod.payments (
             <div class="surface-head result-head"><div><span class="step">02</span><h3>Execution trace</h3><p id="agentRunMeta">No active agent run.</p></div><span id="agentQualityBadge" class="quality-badge">IDLE</span></div>
             <div class="metric-strip"><div><span>State</span><strong id="agentState">—</strong></div><div><span>Step</span><strong id="agentStep">—</strong></div><div><span>Repairs</span><strong id="agentRepairs">0</strong></div><div><span>Quality</span><strong id="agentQualityScore">—</strong></div></div>
             <div id="agentTrace" class="agent-trace"><div class="empty-copy">Start an agent run to see PLAN → TOOL → OBSERVATION → VALIDATION → REPAIR events.</div></div>
-            <div id="agentApproval" class="approval-card hidden"><strong>Target loading is gated</strong><p>The generated ZIP is ready. Loading into a database requires an explicit writable target connection and approval.</p></div>
+            <div id="agentApproval" class="approval-card hidden"><strong>Target loading is gated</strong><p>The generated ZIP is ready. Choose a separate writable target under Connectors. Production loads ask for your administrator password and bind the approval to this exact artifact and target.</p><button id="approveAgentLoadBtn" class="ghost-button">Approve and load to configured target</button><p id="agentLoadStatus" role="status"></p></div>
           </section>
         </div>
       </section>
@@ -171,6 +171,7 @@ CREATE TABLE prod.payments (
   </div>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="loginDialog" aria-labelledby="loginTitle"><form id="loginForm"><h2 id="loginTitle">Sign in to SyntheticForge</h2><p id="loginMessage">Administrator authentication is required to use this workspace.</p><label>Username<input id="loginUsername" name="username" autocomplete="username" required /></label><label>Password<input id="loginPassword" name="password" type="password" autocomplete="current-password" required /></label><p id="loginError" class="inline-status error" role="alert"></p><button class="accent-button" type="submit">Sign in</button></form></dialog>
 <script src="/static/app.js"></script>
 </body>
 </html>

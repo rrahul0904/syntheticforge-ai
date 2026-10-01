@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path: sys.path.insert(0,str(ROOT))
 import json, resource, tempfile, time
+import sys
 from app.models import ColumnSpec, GenerateRequest
 from app.streaming import stream_ndjson
 
@@ -16,6 +17,7 @@ cols=[
 with tempfile.TemporaryDirectory() as td:
     out=Path(td)/"million.jsonl"; start=time.perf_counter(); count=stream_ndjson(req,cols,out,batch_size=10_000); elapsed=time.perf_counter()-start
     rss=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    rss_mb=rss/1024 if rss>10_000 else rss/(1024*1024)
+    # macOS reports ru_maxrss in bytes, Linux and the BSDs report KiB.
+    rss_mb=rss/(1024*1024) if sys.platform=="darwin" else rss/1024
     report={"rows":count,"elapsed_seconds":round(elapsed,3),"rows_per_second":round(count/elapsed,1),"peak_rss_mb":round(rss_mb,2),"output_bytes":out.stat().st_size,"batch_size":10_000}
     print(json.dumps(report,indent=2))

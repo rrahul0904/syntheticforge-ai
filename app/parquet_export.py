@@ -19,7 +19,7 @@ def rows_to_parquet(rows:list[dict[str,Any]])->bytes:
     out=io.BytesIO(); pq.write_table(table,out,compression="snappy"); return out.getvalue()
 
 
-def stream_parquet(batches:Iterable[list[dict[str,Any]]],target:Path)->int:
+def stream_parquet(batches:Iterable[list[dict[str,Any]]],target:Path,schema:Any|None=None)->int:
     if not parquet_available():
         raise RuntimeError("Parquet support requires the optional 'parquet' dependency: pip install 'syntheticforge-ai[parquet]'")
     import pyarrow as pa
@@ -28,8 +28,10 @@ def stream_parquet(batches:Iterable[list[dict[str,Any]]],target:Path)->int:
     try:
         for batch in batches:
             if not batch: continue
-            table=pa.Table.from_pylist(batch)
-            if writer is None: writer=pq.ParquetWriter(target,table.schema,compression="snappy")
+            table=pa.Table.from_pylist(batch,schema=schema)
+            if writer is None:
+                schema=table.schema
+                writer=pq.ParquetWriter(target,schema,compression="snappy")
             writer.write_table(table); total+=len(batch)
     finally:
         if writer is not None: writer.close()

@@ -247,6 +247,9 @@ class SystemGenerateRequest(BaseModel):
         keys = [(t.schema_name.lower(), t.name.lower()) for t in self.tables]
         if len(keys) != len(set(keys)):
             raise ValueError("Table names must be unique within a schema")
+        max_total=100_000
+        if sum(t.row_count or self.default_row_count for t in self.tables)>max_total:
+            raise ValueError(f"System generation exceeds the bounded maximum of {max_total} rows")
         return self
 
 
@@ -333,6 +336,7 @@ class ProjectCreateRequest(BaseModel):
 
 class RecipeSpec(BaseModel):
     id: str | None = None
+    fingerprint: str | None = None
     project_id: str
     name: str
     version: int = 1
@@ -357,6 +361,11 @@ class DatasetRecord(BaseModel):
     profile: dict[str, Any] = Field(default_factory=dict)
     exports: list[str] = Field(default_factory=list)
     parent_version: int | None = None
+    recipe_fingerprint: str | None = None
+    source_metadata_fingerprint: str | None = None
+    application_sha: str | None = None
+    contract_fingerprint: str | None = None
+    contract: dict[str, Any] = Field(default_factory=dict)
 
 
 class JobRecord(BaseModel):
@@ -386,6 +395,7 @@ class DirectLoadRequest(BaseModel):
     dry_run: bool = True
     mode: Literal["append", "truncate"] = "append"
     confirm_destructive: bool = False
+    approval_id: str | None = Field(default=None, max_length=128)
 
 
 class ProjectGenerateRequest(BaseModel):
@@ -403,7 +413,7 @@ class SystemModelingRequest(BaseModel):
     database_name: str = "synthetic"
     schema_name: str = "public"
     description: str = Field(min_length=3, max_length=20_000)
-    default_row_count: int = Field(default=50, ge=1, le=1_000_000)
+    default_row_count: int = Field(default=50, ge=1, le=100_000)
     ai_inference: bool = True
 
 AgentRunState = Literal[
@@ -426,7 +436,7 @@ class AgentRunCreateRequest(BaseModel):
     database_type: DatabaseType = "postgresql"
     database_name: str = "synthetic"
     schema_name: str = "public"
-    default_row_count: int = Field(default=50, ge=1, le=1_000_000)
+    default_row_count: int = Field(default=50, ge=1, le=100_000)
     seed: int = Field(default=42, ge=0, le=2_147_483_647)
     quality_threshold: float = Field(default=95.0, ge=0, le=100)
     max_repairs: int = Field(default=2, ge=0, le=10)
@@ -463,6 +473,7 @@ class AgentLoadApprovalRequest(BaseModel):
     batch_size: int = Field(default=1000, ge=1, le=100_000)
     mode: Literal["append", "truncate"] = "append"
     confirm_destructive: bool = False
+    approval_id: str | None = Field(default=None, max_length=128)
 
 
 class AIProviderSessionRequest(BaseModel):
@@ -470,3 +481,19 @@ class AIProviderSessionRequest(BaseModel):
     model: str | None = Field(default=None, max_length=256)
     base_url: str | None = Field(default=None, max_length=2048)
     api_key: str | None = Field(default=None, max_length=8192)
+
+
+class AdminLoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=2048)
+
+
+class WriteApprovalRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=2048)
+    action: Literal["direct-load", "agent-load"]
+    target: str = Field(min_length=1, max_length=512)
+    confirm_destructive: bool = False
+    destructive_confirmation: str | None = Field(default=None, max_length=600)
+    direct_load_request: DirectLoadRequest | None = None
+    agent_run_id: str | None = Field(default=None, max_length=128)
+    agent_load_request: AgentLoadApprovalRequest | None = None

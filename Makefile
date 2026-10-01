@@ -17,6 +17,7 @@ test:
 verify: test
 	$(PYTHON) -m compileall -q app tests scripts
 	node --check app/static/app.js
+	sh -n scripts/entrypoint.sh
 	$(PYTHON) scripts/demo_sqlite_roundtrip.py
 	$(PYTHON) -m app.cli --help
 

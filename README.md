@@ -1,4 +1,4 @@
-# SyntheticForge AI 0.5 — Local Agentic Synthetic Data Platform
+# SyntheticForge AI 1.0.0-rc1 — Local Agentic Synthetic Data Platform
 
 SyntheticForge AI is a local-first synthetic test-data platform. Give it a schema, API contract, sample, live read-only database, or plain-English system goal and it can model the system, profile bounded source samples, classify sensitive fields, infer rules, generate relational synthetic data, validate it, repair failed output, version/package the result, and optionally load an approved target.
 
@@ -7,8 +7,9 @@ SyntheticForge is **not AGI** and does not claim to understand every conceivable
 ## Start locally
 
 ```bash
-unzip syntheticforge-ai-v0.5-agentic.zip
-cd syntheticforge-ai-v0.5-agentic
+git clone https://github.com/rrahul0904/syntheticforge-ai.git
+cd syntheticforge-ai
+python -m pip install -e '.[dev,parquet]'
 ./run_local.sh
 ```
 
@@ -21,6 +22,8 @@ run_local.bat
 Then open `http://127.0.0.1:8000`. API docs are at `http://127.0.0.1:8000/docs`.
 
 Nothing is deployed to Vercel.
+
+For the release boundary, deployment status, and exact verification evidence, see [the v1 release evidence](docs/V1_RELEASE_EVIDENCE.md), [connector certification matrix](docs/CONNECTOR_CERTIFICATION.md), and [deployment instructions](docs/DEPLOY_NOW.md). The current release candidate is single-node SQLite-backed and is not a claim of external deployment or universal connector certification.
 
 ## Agentic workflow
 

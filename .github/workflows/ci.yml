@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "codex/**"]
   pull_request:
     branches: [main]
 
@@ -10,40 +10,118 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Python ${{ matrix.python-version }}
+  verify:
+    name: Verify Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: python -m pip install -e '.[dev,parquet]'
+      - run: python -m pip install playwright && python -m playwright install --with-deps chromium
+      - run: make verify PYTHON=python
+      - run: python -m pip install pip-audit && pip-audit -r requirements-prod.lock
 
-      - name: Install project
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+
+  postgresql-integration:
+    name: PostgreSQL source to target integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sf
+          POSTGRES_PASSWORD: sf-test-password
+          POSTGRES_DB: sf_source
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sf -d sf_source"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e '.[postgres]'
+      - run: python -m pytest -q tests/test_live_database_integrations.py -k postgresql
+        env:
+          SYNTHETICFORGE_TEST_POSTGRESQL_DSN: postgresql://sf:sf-test-password@127.0.0.1:5432/sf_source
+          SYNTHETICFORGE_TEST_POSTGRESQL_TARGET_DATABASE: sf_target
+
+  mysql-integration:
+    name: MySQL source to target integration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root-test-password
+          MYSQL_DATABASE: sf_source
+          MYSQL_USER: sf
+          MYSQL_PASSWORD: sf-test-password
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot-test-password"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e '.[mysql]'
+      - run: python -m pytest -q tests/test_live_database_integrations.py -k mysql
+        env:
+          SYNTHETICFORGE_TEST_MYSQL_DSN: mysql://root:root-test-password@127.0.0.1:3306/sf_source
+          SYNTHETICFORGE_TEST_MYSQL_TARGET_DATABASE: sf_target
+
+  production-container:
+    name: Production image build and HTTP smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build --build-arg VCS_REF="$GITHUB_SHA" --tag syntheticforge-ai:ci .
+      - name: Start and verify production image
+        shell: bash
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e '.[dev]'
-
-      - name: Run tests
-        run: pytest -q
-
-      - name: Compile Python
-        run: python -m compileall -q app tests scripts
-
-      - name: Check browser JavaScript syntax
-        run: node --check app/static/app.js
-
-      - name: Verify SQLite end-to-end roundtrip
-        run: python scripts/demo_sqlite_roundtrip.py
-
-      - name: CLI smoke test
-        run: syntheticforge --help
+          PASSWORD_HASH="$(python3 -c 'import sys; sys.path.insert(0,"."); from app.security import hash_password; print(hash_password("ci-test-password-with-32-characters"))')"
+          TOKEN_HASH="$(python3 -c 'import hashlib; print(hashlib.sha256(b"ci-operator-token").hexdigest())')"
+          docker run --detach --name syntheticforge-ci --publish 127.0.0.1:8000:8000 \
+            --env SYNTHETICFORGE_ADMIN_USERNAME=admin \
+            --env SYNTHETICFORGE_ADMIN_PASSWORD_HASH="$PASSWORD_HASH" \
+            --env SYNTHETICFORGE_API_TOKEN_SHA256="$TOKEN_HASH" \
+            --env SYNTHETICFORGE_CORS_ORIGINS=https://forge.example.test \
+            --env SYNTHETICFORGE_REPLICAS=1 --env WEB_CONCURRENCY=1 \
+            syntheticforge-ai:ci
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8000/api/health; then break; fi
+            sleep 2
+          done
+          curl --fail http://127.0.0.1:8000/api/readiness
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8000/api/projects)" = 401
+          curl --fail --silent http://127.0.0.1:8000/ | grep -q 'SyntheticForge'
+          for i in $(seq 1 30); do
+            if [ "$(docker inspect --format '{{.State.Health.Status}}' syntheticforge-ci)" = healthy ]; then exit 0; fi
+            sleep 2
+          done
+          docker inspect --format '{{json .State.Health}}' syntheticforge-ci
+          exit 1
+      - if: always()
+        run: docker logs syntheticforge-ci || true; docker rm -f syntheticforge-ci || true

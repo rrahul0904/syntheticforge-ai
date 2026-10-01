@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
+import os
 import re
 from abc import ABC, abstractmethod
 from contextlib import suppress
@@ -50,16 +52,35 @@ class BaseConnector(ABC):
 
     def connect(self) -> "BaseConnector":
         if self._connection is None:
-            self._connection = self._connect_impl()
-            self._set_read_only_if_supported()
+            if self.config.read_only and os.getenv("SYNTHETICFORGE_ENV", "development").lower()=="production" and not self.production_read_only_supported:
+                raise ConnectorError(f"Production read-only enforcement is unverified for {self.connector_name}; use a certified read-only database role or a supported enforcement adapter")
+            try:self._connection = self._connect_impl()
+            except Exception as exc:raise ConnectorError(self.safe_error(exc)) from exc
+            try:
+                if self.config.read_only:self._set_read_only_if_supported()
+            except Exception as exc:
+                self.close()
+                raise ConnectorError(f"Could not enforce source read-only policy for {self.connector_name}: {self.safe_error(exc)}") from exc
         return self
+
+    @property
+    def production_read_only_supported(self)->bool:
+        return self.connector_name in {"sqlite","postgresql","mysql","oracle"}
+
+    def policy_receipt(self)->dict[str,Any]:
+        return {"connector":self.connector_name,"requested_read_only":self.config.read_only,"read_only_enforced":bool(self.config.read_only and self.production_read_only_supported),"read_only_mechanism":self.read_only_mechanism if self.config.read_only else "explicit-writable-target","capabilities":self.capabilities}
+
+    @property
+    def read_only_mechanism(self)->str:
+        return "unproven"
 
     @abstractmethod
     def _connect_impl(self) -> Any:
         raise NotImplementedError
 
     def _set_read_only_if_supported(self) -> None:
-        return None
+        if os.getenv("SYNTHETICFORGE_ENV", "development").lower()=="production":
+            raise ConnectorError("Connector does not implement enforced read-only mode")
 
     def close(self) -> None:
         if self._connection is not None:
@@ -83,7 +104,9 @@ class BaseConnector(ABC):
 
     def safe_error(self, exc: Exception) -> str:
         text = str(exc)
-        for secret in (self.config.password, self.config.username):
+        secrets=[self.config.password,self.config.username,self.config.account]
+        secrets.extend(str(v) for k,v in self.config.extra.items() if any(word in str(k).lower() for word in ("token","secret","password","credential","key")))
+        for secret in secrets:
             if secret:
                 text = text.replace(secret, "***")
         return text[:1000]
@@ -93,7 +116,12 @@ class BaseConnector(ABC):
         cur = self._connection.cursor()
         try:
             cur.execute(sql, tuple(params or ()))
-            return list(cur.fetchall()) if getattr(cur, "description", None) else []
+            rows=list(cur.fetchall()) if getattr(cur, "description", None) else []
+            self._query_receipt(sql,len(rows),"success")
+            return rows
+        except Exception:
+            self._query_receipt(sql,0,"failure")
+            raise
         finally:
             with suppress(Exception):
                 cur.close()
@@ -104,10 +132,22 @@ class BaseConnector(ABC):
         try:
             cur.execute(sql, tuple(params or ()))
             names = [d[0] for d in (cur.description or [])]
-            return [dict(zip(names, row)) for row in cur.fetchall()]
+            rows=[dict(zip(names, row)) for row in cur.fetchall()]
+            self._query_receipt(sql,len(rows),"success")
+            return rows
+        except Exception:
+            self._query_receipt(sql,0,"failure")
+            raise
         finally:
             with suppress(Exception):
                 cur.close()
+
+    def _query_receipt(self,sql:str,rows:int,status:str)->None:
+        # Receipts describe the action without retaining raw SQL, parameters, rows or connection credentials.
+        sink=getattr(self,"receipt_sink",None)
+        if sink:
+            statement=sql.lstrip().split(None,1)[0].upper() if sql.strip() else "EMPTY"
+            sink(action="connector.query",connector=self.connector_name,policy=status,query_hash=hashlib.sha256(" ".join(sql.split()).encode()).hexdigest(),metadata={"statement_type":statement,"rows_returned":rows,"read_only":self.config.read_only})
 
     def list_databases(self) -> list[str]:
         return [self.config.database] if self.config.database else []

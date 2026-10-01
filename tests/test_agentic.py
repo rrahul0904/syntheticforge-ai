@@ -158,9 +158,9 @@ def test_session_ai_settings_never_return_or_audit_key(tmp_path):
 
 def test_health_and_diagnostics_report_agentic_version(tmp_path):
     fresh_repo(tmp_path)
-    assert client.get("/api/health").json()["version"] == "0.5.0"
+    assert client.get("/api/health").json()["version"] == "1.0.0-rc1"
     diag = client.get("/api/diagnostics").json()
-    assert diag["version"] == "0.5.0"
+    assert diag["version"] == "1.0.0-rc1"
     assert "agent_runs" in diag
 
 
@@ -235,6 +235,6 @@ def test_agent_artifact_is_immutable_dataset_record(tmp_path):
     assert run["dataset_id"]
     dataset = repo.get_dataset(run["dataset_id"])
     assert dataset.version >= 1
-    assert dataset.generator_version == "0.5.0"
+    assert dataset.generator_version == "1.0.0rc1"
     assert dataset.validation["quality_score"] >= 95
     assert dataset.exports and Path(dataset.exports[0]).is_file()

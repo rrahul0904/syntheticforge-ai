@@ -13,6 +13,13 @@ class SQLiteConnector(BaseConnector):
     connector_name = "sqlite"
     driver_names = ("sqlite3",)
 
+    @property
+    def read_only_mechanism(self)->str:return "SQLite URI mode=ro"
+
+    def _set_read_only_if_supported(self)->None:
+        # _connect_impl opens with the SQLite URI mode=ro flag, enforced by SQLite itself.
+        return None
+
     def __init__(self, config: ConnectorConfig):
         super().__init__(config)
         if not config.path and not config.database:

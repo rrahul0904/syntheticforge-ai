@@ -1,20 +1,7 @@
-# Verification Report — SyntheticForge AI 0.5
+# Verification report — current v1.0.0-rc1 candidate
 
-Latest repository verification before GitHub check-in:
+The original v0.5 verification had 61 passing tests and a successful SQLite source-to-target demonstration. That is baseline evidence only and does not certify the modified candidate.
 
-```text
-pytest:              61 passed
-python compileall:   PASS
-JavaScript syntax:   PASS
-```
+The current release-gate results are maintained in [V1_RELEASE_EVIDENCE.md](V1_RELEASE_EVIDENCE.md). That record distinguishes completed local runs from pending browser, container, CI-service, credential-gated connector, AI-provider, benchmark, and deployment checks. Do not use the historical report to infer current status.
 
-Previously exercised local runtime evidence on this code line includes:
-
-- real Uvicorn health/agent/artifact HTTP flow: v0.5.0 health, completed agent at 100.0 quality, 14 trace events, ZIP artifact downloaded;
-- deterministic agent completion at 100.0 quality;
-- forced validation failure followed by repair and successful revalidation;
-- SQLite read-only source introspection/profile/generation/validation/direct-load into a separate target with zero broken foreign keys and unchanged source;
-- 1,000,000-row streaming benchmark with bounded memory;
-- Chromium-rendered Agent Runs and AI Settings surfaces with no console errors at the mocked API boundary.
-
-Enterprise connector adapters are covered by contract/catalog tests but require credentials and matching vendor runtimes for final real-system smoke certification. See `EXTERNAL_VERIFICATION.md`.
+The single developer certification command is `make verify`. CI runs it on Python 3.11 and 3.12 after installing the browser runtime, and has separate PostgreSQL/MySQL integration and production-container jobs.

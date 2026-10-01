@@ -33,6 +33,7 @@ def _schema_compatible(config:ConnectorConfig,table:GeneratedTable,db:Any)->None
 
 
 def _load_bigquery(config:ConnectorConfig,table:GeneratedTable,batch_size:int,dry_run:bool,mode:str,confirm_destructive:bool)->dict[str,Any]:
+    if config.read_only:raise ValueError("Target loading requires a separate explicit config with read_only=false")
     if mode=="truncate" and not confirm_destructive: raise ValueError("truncate mode requires explicit confirm_destructive=true")
     db=create_connector(config.model_copy(update={"read_only":False}))
     try:
@@ -72,7 +73,7 @@ def load_table(config:ConnectorConfig,table:GeneratedTable,batch_size:int=1000,d
     if mode not in {"append","truncate"}: raise ValueError("mode must be append or truncate")
     if batch_size<1 or batch_size>100_000: raise ValueError("batch_size must be between 1 and 100000")
     if config.connector=="bigquery": return _load_bigquery(config,table,batch_size,dry_run,mode,confirm_destructive)
-    if config.read_only: config=config.model_copy(update={"read_only":False})
+    if config.read_only:raise ValueError("Target loading requires a separate explicit config with read_only=false")
     if mode=="truncate" and not confirm_destructive: raise ValueError("truncate mode requires explicit confirm_destructive=true")
     schema=table.schema_name; name=table.name; connector=config.connector
     cols=[c.name for c in table.columns]

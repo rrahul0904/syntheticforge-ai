@@ -1,21 +1,18 @@
-# Completion Matrix — v0.5
+# Completion matrix — v1.0.0-rc1
 
-This matrix separates implementation from external runtime certification. Percentages are not inflated when credentials or vendor runtimes are unavailable.
+| Capability | Implementation state | Executed evidence | Remaining gate |
+|---|---|---|---|
+| Deterministic single-table and relational generation | Implemented | Existing unit/system/agent tests; local browser run pending | Final full verification |
+| DDL, JSON Schema, OpenAPI, Avro and CSV ingestion | Implemented | Parser/API tests; UI browser checks pending | Final full verification |
+| Validation, repair and revalidation | Implemented | Existing forced-failure repair tests | Final full verification |
+| SQLite source introspection and separate target load | Implemented | `scripts/demo_sqlite_roundtrip.py`; production read-only browser flow pending | Final verification rerun |
+| PostgreSQL and MySQL adapters | Implemented | Contract tests | Disposable CI source-to-target service tests |
+| SQL Server, Oracle, Snowflake, BigQuery and Redshift adapters | Implemented | Contract/catalog tests | Real service/credential-gated checks; production read-only policy blocks unproven adapters |
+| Projects, recipes, dataset fingerprints and artifact persistence | Implemented | Persistence and API tests | Verify exact commit SHA is present in production artifact |
+| Production authentication and write controls | Implemented | Negative security tests | Final full verification and container smoke |
+| Parquet | Implemented as optional runtime | `pyarrow` pinned in release image and CI extras | Generate, reload and verify content in final run |
+| Browser UI | Implemented | Real HTTPS Chromium suite added | Final local pass and hosted CI result |
+| Production container | Implemented | Pinned base, dependency lock, non-root, one worker, health probe | Docker build/HTTP smoke runs in hosted CI only |
+| Managed deployment | Configuration ready | Deployment steps recorded | Hosting credentials, persistent volume, public HTTPS endpoint and runtime verification |
 
-| Capability | Implementation | Local/runtime evidence | External gate |
-|---|---:|---|---|
-| Core/single/multi-table generation | 100% | automated tests + live local runs | none |
-| DDL / JSON Schema / OpenAPI / Avro ingestion | >=95% | parser/unit tests | vendor edge-corpus expansion remains ongoing |
-| Natural-language modeling | >=95% local path | deterministic hospitality model tests | external LLM smoke pending |
-| Validation / repair | >=95% | forced failure -> repair -> revalidation tests | none |
-| Exports / ZIP | >=95% | artifact/API tests | Parquet requires pyarrow runtime |
-| SQLite connector/load | 100% | real read-only source -> target roundtrip | none |
-| PostgreSQL/MySQL/SQL Server/Oracle/Snowflake/BigQuery/Redshift | implemented | connector contract/catalog tests | real credential-gated smoke pending |
-| Profiling/correlations/business semantics/privacy | >=95% implementation | unit/integration tests | source-specific fidelity can be tuned per system |
-| Streaming generation | >=95% | 1,000,000-row bounded-memory benchmark | none |
-| Projects/recipes/versioning/jobs/agent traces | >=95% | persistence/API tests | none |
-| Agentic orchestration | >=95% | planner safety, trace, quality gate, repair, cancellation tests | external LLM smoke pending |
-| Security/observability | >=95% local application scope | secret redaction, health/readiness/metrics/audit tests | production deployment hardening is environment-specific |
-| UI/UX | >=95% local product shell | rendered Agent Runs/Settings + JS checks | full localhost browser E2E depends on browser environment |
-
-SyntheticForge is not declared globally complete until the external gates in `EXTERNAL_VERIFICATION.md` are executed successfully.
+No percentages are used because remaining checks depend on runtime evidence, not estimated implementation completeness. See `V1_RELEASE_GAP_MATRIX.md` and `V1_RELEASE_EVIDENCE.md` for the scoped detail.
