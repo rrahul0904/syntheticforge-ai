@@ -77,6 +77,11 @@ def test_database_source_is_read_only_and_target_load_is_separate(prefix: str, c
     adapter = create_connector(source)
     try:
         adapter.connect()
+        table_names = adapter.list_tables(source.schema_name)
+        assert len(table_names) == len({name.casefold() for name in table_names}), table_names
+        for table_name in table_names:
+            column_names = [str(row["column_name"]).casefold() for row in adapter._column_rows(table_name, source.schema_name)]
+            assert len(column_names) == len(set(column_names)), (table_name, column_names)
         specs = adapter.introspect_system(source.schema_name)
         assert {table.name for table in specs} >= {"customers", "orders"}
         orders = next(table for table in specs if table.name == "orders")
