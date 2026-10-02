@@ -125,11 +125,11 @@ jobs:
             echo
             echo "| Field | Value |"
             echo "| --- | --- |"
-            echo "| Source SHA | `$IMAGE_SOURCE_SHA` |"
-            echo "| OCI image config digest (image ID) | `$IMAGE_CONFIG_DIGEST` |"
-            echo "| Build date (UTC) | `$IMAGE_CREATED` |"
-            echo "| Python version | `$PYTHON_VERSION` |"
-            echo "| Application version | `$APP_VERSION` |"
+            printf '| Source SHA | `%s` |\n' "$IMAGE_SOURCE_SHA"
+            printf '| OCI image config digest (image ID) | `%s` |\n' "$IMAGE_CONFIG_DIGEST"
+            printf '| Build date (UTC) | `%s` |\n' "$IMAGE_CREATED"
+            printf '| Python version | `%s` |\n' "$PYTHON_VERSION"
+            printf '| Application version | `%s` |\n' "$APP_VERSION"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Start and verify production image
         shell: bash
