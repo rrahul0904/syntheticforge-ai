@@ -39,6 +39,25 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _make_database_portable(path: Path) -> None:
+    """Checkpoint WAL state and switch this offline copy to a self-contained DB."""
+    conn = sqlite3.connect(path, timeout=30)
+    try:
+        mode = conn.execute("PRAGMA journal_mode").fetchone()[0].lower()
+        if mode == "wal":
+            checkpoint = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+            if checkpoint and checkpoint[0] != 0:
+                raise RuntimeError(f"Could not checkpoint SQLite backup WAL: {checkpoint}")
+        mode = conn.execute("PRAGMA journal_mode=DELETE").fetchone()[0].lower()
+        if mode != "delete":
+            raise RuntimeError(f"Could not normalize SQLite backup journal mode: {mode}")
+        check = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        if check != "ok":
+            raise RuntimeError(f"SQLite backup integrity check failed: {check}")
+    finally:
+        conn.close()
+
+
 def _acquire_stopped_lock(state_dir: Path):
     """Production Repository owns this flock; fail if the service is running."""
     lock = (state_dir / "state.db.single-node.lock").open("a+")
@@ -71,6 +90,7 @@ def create_backup(state_dir: Path | str, output: Path | str) -> Path:
             finally:
                 target.close()
                 source.close()
+            _make_database_portable(snapshot)
 
             datasets = root / "datasets"
             if datasets.exists():
@@ -95,11 +115,12 @@ def create_backup(state_dir: Path | str, output: Path | str) -> Path:
                             raise ValueError(f"Dataset {row[0]} has an artifact missing from the state directory")
                         payloads.append({"dataset_id": row[0], "path": relative.as_posix()})
 
-            file_hashes = {
-                p.relative_to(stage).as_posix(): _sha256(p)
-                for p in sorted(stage.rglob("*"))
-                if p.is_file()
-            }
+            # Only hash files that are explicitly written to the archive. SQLite
+            # may create transient -wal/-shm files while the snapshot is read.
+            archive_files = [snapshot]
+            if (stage / "datasets").exists():
+                archive_files.extend(p for p in sorted((stage / "datasets").rglob("*")) if p.is_file())
+            file_hashes = {p.relative_to(stage).as_posix(): _sha256(p) for p in archive_files}
             manifest = {
                 "format_version": FORMAT_VERSION,
                 "state_directory": str(root),
@@ -165,6 +186,9 @@ def restore_backup(archive: Path | str, destination: Path | str) -> Path:
         hashes = manifest.get("sha256")
         if not isinstance(hashes, dict):
             raise ValueError("Backup manifest has no integrity map")
+        archive_payloads = set(names) - {"manifest.json"}
+        if archive_payloads != set(hashes):
+            raise ValueError("Backup members do not match the integrity manifest")
         for name, digest in hashes.items():
             safe = _safe_member(name)
             member = stage.joinpath(*safe.parts)
@@ -198,11 +222,7 @@ def restore_backup(archive: Path | str, destination: Path | str) -> Path:
                         conn.execute("UPDATE datasets SET payload_json=? WHERE id=?", (json.dumps(payload), row[0]))
         finally:
             conn.close()
-        conn = sqlite3.connect(db_path)
-        try:
-            conn.execute("PRAGMA journal_mode=DELETE")
-        finally:
-            conn.close()
+        _make_database_portable(db_path)
         manifest_path.unlink()
         if target.exists():
             moved: list[Path] = []

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import zipfile
@@ -36,6 +37,8 @@ def test_backup_restores_database_artifacts_and_relocated_export_references(tmp_
         names = zf.namelist()
         manifest = json.loads(zf.read("manifest.json"))
         assert "state.db" in names
+        assert not any(name.startswith("state.db-") for name in names)
+        assert set(manifest["sha256"]) == set(names) - {"manifest.json"}
         assert f"datasets/{dataset_id}/fixture.zip" in names
         assert "do-not-copy-this-value" not in zf.read("state.db").decode("latin-1")
         assert manifest["environment_secret_values_included"] is False
@@ -44,6 +47,9 @@ def test_backup_restores_database_artifacts_and_relocated_export_references(tmp_
     restored = tmp_path / "restored"
     restored.mkdir()  # Also models an empty mounted volume root.
     restore_backup(archive, restored)
+    with sqlite3.connect(restored / "state.db") as conn:
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "delete"
+        assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     repo = Repository(restored / "state.db")
     dataset = repo.get_dataset(dataset_id)
     assert len(dataset.exports) == 1
