@@ -21,7 +21,7 @@ run_local.bat
 
 Then open `http://127.0.0.1:8000`. API docs are at `http://127.0.0.1:8000/docs`.
 
-Nothing is deployed to Vercel.
+No externally verified deployment is currently claimed. The release evidence records hosted deployment checks separately from the container application source.
 
 For the release boundary, deployment status, and exact verification evidence, see [the v1 release evidence](docs/V1_RELEASE_EVIDENCE.md), [connector certification matrix](docs/CONNECTOR_CERTIFICATION.md), and [deployment instructions](docs/DEPLOY_NOW.md). The current release candidate is single-node SQLite-backed and is not a claim of external deployment or universal connector certification.
 

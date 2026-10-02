@@ -13,7 +13,8 @@ This ledger records the implementation, integration, and evidence for the v1.0.0
 | PR state at start | Open, mergeable, not draft, not merged |
 | Starting CI | Push run `36918266093` and PR run `36918274481` passed at the starting SHA |
 | Starting review findings | `4159282386` (dry-run approval) and `4159282406` (operator dashboard) |
-| Integrated code SHA before final evidence docs | `ab7c6644b692969217c2b4fcab2ed8fec008c3a3` |
+| Integrated application-code SHA | `ab7c6644b692969217c2b4fcab2ed8fec008c3a3` |
+| Clean benchmark SHA | `f9a4116bf1218e7d6490f82572d54247be395b90` (documentation checkpoint; no application code changed after full verification) |
 | Current PR head | Still the starting SHA until final evidence is committed and pushed |
 | Execution date | 2026-10-02 |
 
@@ -42,7 +43,7 @@ This ledger records the implementation, integration, and evidence for the v1.0.0
 | 5 — browser UX | Production-server Playwright covers administrator/operator dashboard, sessions, CSRF, keyboard, responsive overflow, and secret non-reflection. Full suite passed locally. |
 | 6 — security | Red-team and production tests passed. CORS preflight works only for configured origins; protected actual requests remain authenticated. SQLite schema input exposes metadata for caller-selected files readable by the service process and is not a filesystem sandbox. |
 | 7 — durability | Backup/restore: 5 passed with WAL handling and manifest validation. Actual container-volume restart/restore remains untested locally; image smoke runs in hosted CI. |
-| 8 — performance | Benchmark CLI supports bounded `--rows`, `--format`, `--seed`, and `--batch-size`; exact 100k and 1M run results remain pending. No performance number is claimed yet. |
+| 8 — performance | 100k and 1M NDJSON runs completed on clean `f9a4116`; details are in `V1_RELEASE_EVIDENCE.md`. These single-machine measurements are not an SLA. |
 | 9 — container | Pinned Python base, non-root user, persistent `/data`, healthcheck, single worker, OCI source/build labels. Updated CI emits image config digest, UTC build date, Python and application versions; verify on exact-head hosted run. |
 | 10–13 — external gates | No authorized managed-host project/credentials, live enterprise connector credentials, or external AI credentials were found. No deployment or live external certification claimed. |
 | 14 — release evidence | Update `V1_RELEASE_EVIDENCE.md` after benchmark and exact-head hosted CI; keep final SHA and image evidence exact. |

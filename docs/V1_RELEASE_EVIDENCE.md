@@ -7,7 +7,8 @@ This record distinguishes evidence on the integrated local branch from hosted an
 | Repository / PR | `rrahul0904/syntheticforge-ai`, PR #2, base `main` |
 | Candidate | `1.0.0-rc1` |
 | Mission start head | `5e55c83243e742938776673abee96816ab1e75c6` |
-| Integrated implementation SHA | `ab7c6644b692969217c2b4fcab2ed8fec008c3a3` (local code; final evidence docs and benchmark results follow) |
+| Integrated application-code SHA | `ab7c6644b692969217c2b4fcab2ed8fec008c3a3` (the following `f9a4116` commit changes documentation only) |
+| Benchmark run SHA | `f9a4116bf1218e7d6490f82572d54247be395b90`; clean working tree, exact SHA emitted by the benchmark tool |
 | Local verification date | 2026-10-02 |
 | PR state | Open; latest integrated code is not yet pushed as the PR head; not merged |
 | Full local `make verify` | **107 passed, 2 skipped, 1 warning** on Python 3.13.0. Skips are PostgreSQL/MySQL service integration tests without local DSNs. Warning is the existing Starlette/httpx deprecation. |
@@ -21,7 +22,8 @@ This record distinguishes evidence on the integrated local branch from hosted an
 | Approval / dry-run | Passed: production dry-run does not need or consume approval and does not mutate/create the SQLite target; actual writes require exact one-use approval; destructive confirmation remains enforced |
 | Agentic local | Deterministic workflow and persisted traces pass. Mandatory plan gates survive untrusted output; malformed output and provider timeout fall back safely; relational PK/FK/date/enum repair is revalidated and persisted. Refund-overpayment repair remains unsupported and fails closed at the quality gate. |
 | Parquet | Included in the full local suite with installed Parquet extra; passed |
-| 100k / 1M benchmark | Pending execution at a clean integrated SHA. The CLI now records exact source SHA, dirty state, Python/platform, format, seed, batch size, elapsed time, throughput, peak RSS with OS-specific units, and output size. |
+| 100k benchmark | Passed at `f9a4116`: 100,000 NDJSON rows, seed 2026, batch 10,000; 1.000036 s; 99,996.41 rows/s; peak RSS 40,329,216 bytes / 38.46 MiB; output 5,381,165 bytes; Python 3.13.0, macOS 26.5.2, x86_64, 12 CPUs. |
+| 1M benchmark | Passed at `f9a4116`: 1,000,000 NDJSON rows, seed 2026, batch 10,000; 9.483847 s; 105,442.45 rows/s; peak RSS 40,357,888 bytes / 38.49 MiB; output 54,809,396 bytes; Python 3.13.0, macOS 26.5.2, x86_64, 12 CPUs. |
 | Dependency audit / secret scan | Passed at mission-start SHA only; refreshed exact-head hosted results pending |
 | Production image / HTTP smoke | Passed at mission-start SHA only. Updated hosted job will record source SHA, image config digest, UTC build date, Python version, and application version; refreshed exact-head run pending |
 | Deployment / live URL | `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED`. No authorized host project or deployment credentials were available; no deployment or URL is claimed. |

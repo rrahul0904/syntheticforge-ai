@@ -2,7 +2,7 @@
 
 ## Release state
 
-SyntheticForge AI is a v1.0.0-rc1 candidate. The integrated code and regression suite currently pass locally at `ab7c6644b692969217c2b4fcab2ed8fec008c3a3`; this code is not yet pushed as the refreshed PR head. Deployment and external enterprise connector/AI certification remain unavailable without authorized credentials.
+SyntheticForge AI is a v1.0.0-rc1 candidate. Application code passes local `make verify` at `ab7c6644b692969217c2b4fcab2ed8fec008c3a3`; benchmark measurements were then run on clean commit `f9a4116bf1218e7d6490f82572d54247be395b90`, which changes documentation only. The refreshed PR head is not pushed yet. Deployment and external enterprise connector/AI certification remain unavailable without authorized credentials.
 
 Current mission evidence:
 
@@ -11,7 +11,7 @@ Current mission evidence:
 - Agentic deterministic mode: mandatory gates, malformed/untrusted planning, provider timeout fallback, relational repair, and persisted failed-then-passing validation traces are covered.
 - Backup/restore: **5 passed**, including WAL normalization, manifest integrity, relocation, lock refusal, empty destination, and traversal rejection.
 - Connector contracts: **7 passed** with two service tests skipped locally; mocks do not claim live certification. Final-head PostgreSQL/MySQL hosted service runs remain pending.
-- The 100k/1M benchmark and refreshed exact-head hosted CI/image evidence remain pending.
+- 100k and 1M NDJSON benchmarks passed at `f9a4116`; results and environment are in `V1_RELEASE_EVIDENCE.md`. Refreshed exact-head hosted CI/image evidence remains pending.
 - Deployment: `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED`; no live URL is claimed.
 
 The authoritative current exact-head evidence is maintained in `V1_RELEASE_EVIDENCE.md` and `NEXT_PHASE_EXECUTION_LEDGER.md`. Do not treat historic test totals or the starting-head CI as evidence for the final integrated SHA.
