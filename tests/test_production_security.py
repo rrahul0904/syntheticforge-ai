@@ -201,6 +201,35 @@ def test_operator_cannot_probe_arbitrary_targets_or_source_connectors(tmp_path,m
         assert len(opened)==1
 
 
+def test_production_sqlite_schema_file_import_is_admin_session_only(tmp_path,monkeypatch):
+    password=production_environment(monkeypatch)
+    operator_password="operator-password-with-more-than-fourteen-characters"
+    monkeypatch.setenv("SYNTHETICFORGE_OPERATOR_USERNAME","operator")
+    monkeypatch.setenv("SYNTHETICFORGE_OPERATOR_PASSWORD_HASH",hash_password(operator_password))
+    monkeypatch.setenv("SYNTHETICFORGE_ENV","development")
+    mainmod._repo=Repository(tmp_path/"state.db")
+    monkeypatch.setenv("SYNTHETICFORGE_ENV","production")
+    source=tmp_path/"private.db"
+    with sqlite3.connect(source) as connection:
+        connection.execute("CREATE TABLE private_records(id INTEGER PRIMARY KEY, secret TEXT)")
+        connection.execute("INSERT INTO private_records VALUES(1, 'never returned')")
+    payload={"database_type":"sqlite","database_name":"private","schema_name":"main","input_format":"sqlite-db","content":str(source),"default_row_count":1}
+
+    with TestClient(app,base_url="https://testserver") as operator_client:
+        login=operator_client.post("/api/auth/login",json={"username":"operator","password":operator_password})
+        assert login.status_code==200,login.text
+        denied=operator_client.post("/api/parse-schema",json=payload,headers={"X-CSRF-Token":login.json()["csrf_token"]})
+        assert denied.status_code==403
+
+    with TestClient(app,base_url="https://testserver") as admin_client:
+        login=admin_client.post("/api/auth/login",json={"username":"admin","password":password})
+        assert login.status_code==200,login.text
+        allowed=admin_client.post("/api/parse-schema",json=payload,headers={"X-CSRF-Token":login.json()["csrf_token"]})
+        assert allowed.status_code==200,allowed.text
+        assert [table["name"] for table in allowed.json()["tables"]]==["private_records"]
+        assert "never returned" not in allowed.text
+
+
 def test_production_destructive_load_keeps_confirmation_gate(tmp_path,monkeypatch):
     password=production_environment(monkeypatch)
     monkeypatch.setenv("SYNTHETICFORGE_ENV","development")

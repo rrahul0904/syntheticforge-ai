@@ -368,7 +368,14 @@ async def export_data(format_name:str,req:GenerateRequest):
 
 
 @app.post("/api/parse-schema",response_model=ParseSchemaResponse)
-def parse_schema_endpoint(req:ParseSchemaRequest):
+def parse_schema_endpoint(req:ParseSchemaRequest,request:Request):
+    # SQLite schema imports accept a server-local path. Keep that filesystem
+    # metadata surface administrator-only in production; ordinary schema
+    # uploads remain available to authenticated operators.
+    if production_mode() and req.input_format=="sqlite-db":
+        identity=getattr(request.state,"identity",None)
+        if not identity or identity.role!="admin" or identity.via!="session":
+            raise HTTPException(status_code=403,detail="Administrator browser session required for SQLite file imports")
     if len(req.content.encode("utf-8"))>max_upload_bytes(): raise HTTPException(status_code=413,detail="Schema input exceeds configured size limit")
     try: tables,warnings=parse_schema(req)
     except (ValueError,json.JSONDecodeError,ValidationError) as exc: raise HTTPException(status_code=400,detail=safe_error_text(str(exc))) from exc
