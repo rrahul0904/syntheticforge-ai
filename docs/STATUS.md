@@ -2,21 +2,19 @@
 
 ## Release state
 
-SyntheticForge AI is a v1.0.0-rc1 candidate. The release retains local-first deterministic operation and adds a fail-closed single-node production mode. It is not deployed. The local browser journey passed; hosted CI and PostgreSQL/MySQL service-container certification remain pending.
+SyntheticForge AI is a v1.0.0-rc1 candidate. The integrated code and regression suite currently pass locally at `ab7c6644b692969217c2b4fcab2ed8fec008c3a3`; this code is not yet pushed as the refreshed PR head. Deployment and external enterprise connector/AI certification remain unavailable without authorized credentials.
 
-Current local verification on the checked-in code line:
+Current mission evidence:
 
-- Baseline before this implementation: `pytest` **61 passed**
-- Current full `make verify`: **68 passed, 2 skipped, 1 warning** (the two live database service cases are skipped locally without service DSNs)
-- Python `compileall`: **PASS**
-- JavaScript syntax: **PASS**
-- SQLite read-only source → profile → generate → validate → target-load roundtrip: **verified**
-- Production HTTPS browser journey and same-volume app restart persistence: **passed locally**
-- Parquet generation and streamed batch reload with nested/null values: **passed locally**
-- 1,000,000-row streaming benchmark: baseline completed; reported RSS was incorrect on macOS and the conversion fix is pending a rerun
-- Agent failure → repair → revalidation: **verified**
-- Agent planner safety normalization and persisted traces: **verified**
-- Agent Runs and AI Settings UI boundary checks: **verified**
+- Full local `make verify`: **107 passed, 2 skipped, 1 warning** on Python 3.13; PostgreSQL/MySQL service tests skipped because no local service DSNs were configured. Python compile, JavaScript syntax, shell syntax, CLI help, and SQLite source-to-target roundtrip passed.
+- Production security and browser certification: focused live HTTPS Uvicorn/Chromium tests cover administrator and operator dashboards, role restrictions, login/session/CSRF, responsive screens, and token non-reflection. Exact per-file totals are in the release evidence.
+- Agentic deterministic mode: mandatory gates, malformed/untrusted planning, provider timeout fallback, relational repair, and persisted failed-then-passing validation traces are covered.
+- Backup/restore: **5 passed**, including WAL normalization, manifest integrity, relocation, lock refusal, empty destination, and traversal rejection.
+- Connector contracts: **7 passed** with two service tests skipped locally; mocks do not claim live certification. Final-head PostgreSQL/MySQL hosted service runs remain pending.
+- The 100k/1M benchmark and refreshed exact-head hosted CI/image evidence remain pending.
+- Deployment: `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED`; no live URL is claimed.
+
+The authoritative current exact-head evidence is maintained in `V1_RELEASE_EVIDENCE.md` and `NEXT_PHASE_EXECUTION_LEDGER.md`. Do not treat historic test totals or the starting-head CI as evidence for the final integrated SHA.
 
 ## Implemented in the v1 candidate
 

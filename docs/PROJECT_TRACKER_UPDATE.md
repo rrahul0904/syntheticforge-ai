@@ -1,6 +1,6 @@
 # Proposed canonical tracker entry
 
-Tracker workbook update state: **not modified**. The canonical tracker workbook was not available in the repository or attached files during this task. This proposal does not claim the spreadsheet itself changed.
+Tracker workbook update state: **not modified**. No canonical tracker workbook was present in the repository, the supplied attachments, or the bounded search of the user's Documents tree. This proposal does not claim the spreadsheet itself changed.
 
 | Field | Proposed value |
 |---|---|
@@ -8,12 +8,13 @@ Tracker workbook update state: **not modified**. The canonical tracker workbook 
 | Former name | AI Test Data Creator |
 | Repository | `rrahul0904/syntheticforge-ai` |
 | Relationship | Canonical product |
-| Current exact SHA | `30ef1486cd144239ad7434f395d83a37e22505eb` (implementation and tested source commit) |
-| Implementation state | v1.0.0-rc1 candidate; local baseline and production controls under verification |
-| Deployment state | `DEPLOYMENT_READY_BUT_NOT_EXECUTED` |
-| Last verified date | 2026-10-01 (local verification; hosted evidence pending) |
-| Blockers | Hosted CI execution, container integration services, browser workflow certification, external credentials/hosting |
-| Next concrete action | Run CI on the proposed branch, resolve any failures, then deploy with an authorized managed-container account |
+| Mission start SHA | `5e55c83243e742938776673abee96816ab1e75c6` |
+| Integrated local code SHA | `ab7c6644b692969217c2b4fcab2ed8fec008c3a3`; docs and benchmark evidence follow in later commits |
+| Implementation state | v1.0.0-rc1 candidate; review fixes, connector/agent regressions, backup/restore, and local full verification are integrated |
+| Deployment state | `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED` (deployment not executed) |
+| Last verified date | 2026-10-02 (local full verification at integrated code SHA; refreshed hosted CI pending) |
+| Blockers | Final benchmark and exact-head hosted CI/review; external deployment, connector and AI credentials; canonical workbook unavailable |
+| Next concrete action | Finish exact-head release evidence, push PR #2, pass CI and required independent review, then merge if branch protection permits |
 | Evidence | `V1_RELEASE_EVIDENCE.md`, `CONNECTOR_CERTIFICATION.md`, `DEPLOY_NOW.md` |
 
 ## Selective capability donors

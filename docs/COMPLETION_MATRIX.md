@@ -1,18 +1,19 @@
-# Completion matrix — v1.0.0-rc1
+# v1.0.0-rc1 completion matrix
 
-| Capability | Implementation state | Executed evidence | Remaining gate |
+| Capability | Implementation state | Current evidence | Remaining gate |
 |---|---|---|---|
-| Deterministic single-table and relational generation | Implemented | Existing unit/system/agent tests; local browser run pending | Final full verification |
-| DDL, JSON Schema, OpenAPI, Avro and CSV ingestion | Implemented | Parser/API tests; UI browser checks pending | Final full verification |
-| Validation, repair and revalidation | Implemented | Existing forced-failure repair tests | Final full verification |
-| SQLite source introspection and separate target load | Implemented | `scripts/demo_sqlite_roundtrip.py`; production read-only browser flow pending | Final verification rerun |
-| PostgreSQL and MySQL adapters | Implemented | Contract tests | Disposable CI source-to-target service tests |
-| SQL Server, Oracle, Snowflake, BigQuery and Redshift adapters | Implemented | Contract/catalog tests | Real service/credential-gated checks; production read-only policy blocks unproven adapters |
-| Projects, recipes, dataset fingerprints and artifact persistence | Implemented | Persistence and API tests | Verify exact commit SHA is present in production artifact |
-| Production authentication and write controls | Implemented | Negative security tests | Final full verification and container smoke |
-| Parquet | Implemented as optional runtime | `pyarrow` pinned in release image and CI extras | Generate, reload and verify content in final run |
-| Browser UI | Implemented | Real HTTPS Chromium suite added | Final local pass and hosted CI result |
-| Production container | Implemented | Pinned base, dependency lock, non-root, one worker, health probe | Docker build/HTTP smoke runs in hosted CI only |
-| Managed deployment | Configuration ready | Deployment steps recorded | Hosting credentials, persistent volume, public HTTPS endpoint and runtime verification |
+| Deterministic generation and schema imports | Implemented | Full local suite; SQLite roundtrip; actual-server browser flow | Final exact-head hosted CI |
+| Relational generation, validation and repair | Implemented | Mandatory agent gates, malformed-plan and timeout fallback, persisted repair/revalidation; 49 focused tests passed | Refund-overpayment repair is unsupported and safely fails the quality gate |
+| SQLite source introspection and approved target load | Implemented | Local source immutability, dry-run, approval, replay, destructive confirmation and roundtrip tests | Final exact-head CI |
+| PostgreSQL and MySQL | Implemented | Contract tests; disposable CI runtime tests passed at starting SHA | Repeat disposable service tests on final PR head |
+| SQL Server, Oracle, Snowflake, BigQuery, Redshift | Implemented | Deterministic mocked contract tests; BigQuery SDK client bug fixed | Authorized live services/credentials; production source policy remains fail-closed where enforcement is unverified |
+| Projects, recipes, dataset versions and persisted agent traces | Implemented | SQLite persistence and API tests | Verify exact source SHA via final hosted container run |
+| Production auth, role controls and approval | Implemented | Security/red-team tests, administrator/operator Playwright, exact one-use approval and non-consuming dry-run | Final exact-head CI and valid review-thread resolution |
+| Browser interface | Implemented | Actual HTTPS Uvicorn/Chromium; login, session, CSRF, dashboard, keyboard, responsive layout and secret non-reflection | Final exact-head CI |
+| Parquet | Implemented as optional runtime | Runtime tests pass in full local suite; pinned in production lock | Final exact-head dependency audit and image smoke |
+| Backup and restore | Implemented | Five tests cover SQLite WAL snapshot, integrity manifest, artifact relocation, locking and archive safety | Real container-volume restore remains untested |
+| Streaming and scale | Implemented for bounded single-table Python stream writers | Reproducible benchmark CLI; 100k/1M measurements pending | Run on integrated clean SHA; no production SLA claim |
+| Production container | Implemented | Pinned base, non-root user, one worker, persistent `/data`, health probe; CI records image evidence | Refresh build/smoke and image digest at final exact head |
+| Managed deployment | Configuration ready | External credential gate recorded | Authorized host, secrets, persistent volume, HTTPS endpoint and runtime verification |
 
-No percentages are used because remaining checks depend on runtime evidence, not estimated implementation completeness. See `V1_RELEASE_GAP_MATRIX.md` and `V1_RELEASE_EVIDENCE.md` for the scoped detail.
+No percentage is used because live-service and deployment gates require actual external evidence. See `V1_RELEASE_EVIDENCE.md` and `CONNECTOR_CERTIFICATION.md` for exact commit and per-connector boundaries.

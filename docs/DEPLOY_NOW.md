@@ -1,6 +1,6 @@
 # Deploy SyntheticForge AI v1.0.0-rc1
 
-Status: `DEPLOYMENT_READY_BUT_NOT_EXECUTED`. No hosting credentials or external runtime were available in this task, so there is no live URL or deployment verification claim.
+Status: `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED`. The local environment has Docker but no Railway or AWS CLI, linked container-host project, or configured deployment credential variables. No external runtime or live URL was available to verify; no deployment was executed.
 
 ## Required production values
 

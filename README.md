@@ -181,18 +181,9 @@ make demo
 
 GitHub Actions runs the test suite on Python 3.11 and 3.12, compiles Python modules, checks the browser JavaScript syntax, executes the SQLite source-to-target roundtrip, and verifies the CLI entry point. See `docs/DEVELOPMENT.md` for the development and release workflow.
 
-## Verification in this build
+## Verification
 
-Current local evidence:
-
-- 61 automated tests passing
-- agent failure → repair → revalidation test passing
-- AI-planner safety normalization test passing
-- all 8 connector adapters covered by catalog/contract tests
-- real SQLite read-only source → profile → generate → validate → target load roundtrip: 100.0 quality, 0 broken FKs, source unchanged
-- 1,000,000-row streaming benchmark: 7.658 s, ~130,580 rows/s, ~100.66 MB peak RSS in this sandbox run
-- Chromium UI boundary test: Agent Runs + Settings, 0 console errors, secret not rendered
-- JavaScript syntax and Python compile checks passing
+Verification claims are recorded with their exact source commit in [`docs/V1_RELEASE_EVIDENCE.md`](docs/V1_RELEASE_EVIDENCE.md). The current implementation, test totals, hosted CI, image, benchmark, deployment, and external-service status are tracked separately there. Connector status distinguishes contract coverage, disposable runtime tests, and live external certification in [`docs/CONNECTOR_CERTIFICATION.md`](docs/CONNECTOR_CERTIFICATION.md). See [`docs/NEXT_PHASE_EXECUTION_LEDGER.md`](docs/NEXT_PHASE_EXECUTION_LEDGER.md) for integration and review evidence.
 
 Real credential-gated verification commands:
 
