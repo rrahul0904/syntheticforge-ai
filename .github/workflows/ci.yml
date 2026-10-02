@@ -101,8 +101,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Capture image build timestamp
+        id: build_meta
+        run: echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - name: Build production image
-        run: docker build --build-arg VCS_REF="$GITHUB_SHA" --tag syntheticforge-ai:ci .
+        env:
+          BUILD_DATE: ${{ steps.build_meta.outputs.build_date }}
+        run: docker build --build-arg VCS_REF="$GITHUB_SHA" --build-arg BUILD_DATE="$BUILD_DATE" --tag syntheticforge-ai:ci .
+      - name: Record production image evidence
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.sha }}
+          BUILD_DATE: ${{ steps.build_meta.outputs.build_date }}
+        run: |
+          IMAGE_CONFIG_DIGEST="$(docker image inspect --format '{{.Id}}' syntheticforge-ai:ci)"
+          IMAGE_SOURCE_SHA="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' syntheticforge-ai:ci)"
+          IMAGE_CREATED="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.created"}}' syntheticforge-ai:ci)"
+          PYTHON_VERSION="$(docker run --rm --entrypoint python syntheticforge-ai:ci -c 'import platform; print(platform.python_version())')"
+          APP_VERSION="$(docker run --rm --entrypoint python syntheticforge-ai:ci -c 'from importlib.metadata import version; print(version("syntheticforge-ai"))')"
+          test "$IMAGE_SOURCE_SHA" = "$EXPECTED_SOURCE_SHA"
+          test "$IMAGE_CREATED" = "$BUILD_DATE"
+          {
+            echo "## Production image evidence"
+            echo
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| Source SHA | `$IMAGE_SOURCE_SHA` |"
+            echo "| OCI image config digest (image ID) | `$IMAGE_CONFIG_DIGEST` |"
+            echo "| Build date (UTC) | `$IMAGE_CREATED` |"
+            echo "| Python version | `$PYTHON_VERSION` |"
+            echo "| Application version | `$APP_VERSION` |"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Start and verify production image
         shell: bash
         run: |

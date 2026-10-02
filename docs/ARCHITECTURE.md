@@ -98,4 +98,4 @@ SyntheticForge should be usable without copying production rows. Future database
 
 ## Scale path
 
-The current API returns bounded datasets in memory. Large-scale generation should move to chunked/streaming writers and background job orchestration only once a durable local job model exists. For very large test environments, the generator should write directly to files/object stores/databases rather than materializing every row in an API response.
+Interactive single-table generation and export endpoints reject requests above 100,000 rows because they materialize the response in memory. Multi-table requests use `SystemGenerateRequest`, which also caps the combined request at 100,000 rows; the CLI uses this same bounded system path. Separately, `app.streaming.stream_ndjson`, `stream_csv`, and `stream_sql` write a single `GenerateRequest` incrementally in batches and the request model currently permits up to 10,000,000 rows. These stream writers are Python APIs, not a durable background-job or large-scale CLI/API workflow; benchmark numbers do not establish a production SLA.

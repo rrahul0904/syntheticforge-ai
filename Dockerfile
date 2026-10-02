@@ -2,6 +2,7 @@
 FROM python:3.12-slim@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f
 
 ARG VCS_REF=unknown
+ARG BUILD_DATE=unknown
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -33,7 +34,8 @@ VOLUME ["/data"]
 EXPOSE 8000
 LABEL org.opencontainers.image.title="SyntheticForge AI" \
       org.opencontainers.image.version="1.0.0-rc1" \
-      org.opencontainers.image.revision=${VCS_REF}
+      org.opencontainers.image.revision=${VCS_REF} \
+      org.opencontainers.image.created=${BUILD_DATE}
 HEALTHCHECK --interval=30s --timeout=4s --start-period=20s --retries=3 \
   CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3).read()"]
 STOPSIGNAL SIGTERM
