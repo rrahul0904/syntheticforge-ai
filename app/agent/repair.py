@@ -68,17 +68,28 @@ def repair_result(req: SystemGenerateRequest, result: SystemGenerateResponse, at
         # PK/composite PK uniqueness.
         pk = spec.primary_key_columns or [c.name for c in table.columns if c.primary_key]
         seen: set[str] = set()
+        occupied = {repr(tuple(row.get(c) for c in pk)) for row in table.rows} if pk else set()
         for i, row in enumerate(table.rows):
             key = tuple(row.get(c) for c in pk)
             marker = repr(key)
             if pk and (any(v is None for v in key) or marker in seen):
-                for pos, name in enumerate(pk):
-                    col = next(c for c in table.columns if c.name == name)
-                    if any(x in col.data_type.lower() for x in ["int", "number", "numeric", "decimal"]):
-                        row[name] = i + 1 + pos * max(1, len(table.rows))
-                    else:
-                        row[name] = f"SF-{seed}-{i}-{pos}"[: col.length or 256]
-                marker = repr(tuple(row.get(c) for c in pk))
+                # Keep the old first candidate for determinism, but advance past
+                # both keys already seen and keys that still occur later in rows.
+                for attempt in range(len(table.rows) + len(occupied) + 1):
+                    for pos, name in enumerate(pk):
+                        col = next(c for c in table.columns if c.name == name)
+                        if any(x in col.data_type.lower() for x in ["int", "number", "numeric", "decimal"]):
+                            row[name] = i + 1 + pos * max(1, len(table.rows)) + attempt * max(1, len(table.rows)) * len(pk)
+                        else:
+                            suffix = f"-{attempt}" if attempt else ""
+                            row[name] = f"SF-{seed}-{i}-{pos}{suffix}"[: col.length or 256]
+                    candidate = repr(tuple(row.get(c) for c in pk))
+                    if candidate not in seen and candidate not in occupied:
+                        marker = candidate
+                        occupied.add(candidate)
+                        break
+                else:
+                    marker = repr(tuple(row.get(c) for c in pk))
             seen.add(marker)
         # FK repair including composites.
         for fk in table.foreign_keys:
