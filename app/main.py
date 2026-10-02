@@ -381,7 +381,10 @@ def export_system(req:SystemGenerateRequest):
 
 @app.post("/api/load")
 def direct_load(req:DirectLoadRequest,request:Request):
-    if production_mode():
+    # A dry run validates the target schema and builds the insert plan without
+    # writing target data. It must not consume an approval intended for a real
+    # load, even if the caller includes that approval_id in the request.
+    if production_mode() and not req.dry_run:
         if not req.approval_id:raise HTTPException(status_code=403,detail="A separate, single-use administrator approval is required before a target write")
         clean=req.model_dump(mode="json",exclude={"approval_id"})
         payload_hash=hashlib.sha256(json.dumps(clean,sort_keys=True,separators=(",",":"),default=str).encode()).hexdigest()
@@ -389,8 +392,14 @@ def direct_load(req:DirectLoadRequest,request:Request):
             repo().audit("write.approval.rejected",req.table.name,{"action":"direct-load","reason":"invalid-expired-or-replayed"},actor=_identity(request).username)
             raise HTTPException(status_code=403,detail="Target write approval is invalid, expired, mismatched or already used")
     try:
-        result=load_table(req.config,req.table,req.batch_size,req.dry_run,req.mode,req.confirm_destructive)
-        repo().audit("load.execute",f"{req.table.schema_name}.{req.table.name}",{"connector":req.config.connector,"dry_run":req.dry_run,"mode":req.mode,"rows":len(req.table.rows)},actor=_identity(request).username)
+        load_config=req.config
+        if req.dry_run and req.config.connector=="sqlite":
+            # SQLite creates a missing file when opened writable. A dry run
+            # must not create the target as a side effect of schema checking.
+            load_config=req.config.model_copy(update={"read_only":True})
+        result=load_table(load_config,req.table,req.batch_size,req.dry_run,req.mode,req.confirm_destructive)
+        if not req.dry_run:
+            repo().audit("load.execute",f"{req.table.schema_name}.{req.table.name}",{"connector":req.config.connector,"dry_run":False,"mode":req.mode,"rows":len(req.table.rows)},actor=_identity(request).username)
         return result
     except Exception as exc: raise HTTPException(status_code=400,detail=safe_error_text(str(exc),[req.config.password])) from exc
 
