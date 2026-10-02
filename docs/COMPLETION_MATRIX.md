@@ -1,21 +1,19 @@
-# Completion Matrix — v0.5
+# v1.0.0-rc1 completion matrix
 
-This matrix separates implementation from external runtime certification. Percentages are not inflated when credentials or vendor runtimes are unavailable.
+| Capability | Implementation state | Current evidence | Remaining gate |
+|---|---|---|---|
+| Deterministic generation and schema imports | Implemented | Full local suite; SQLite roundtrip; actual-server browser flow | Final exact-head hosted CI |
+| Relational generation, validation and repair | Implemented | Mandatory agent gates, malformed-plan and timeout fallback, persisted repair/revalidation; 49 focused tests passed | Refund-overpayment repair is unsupported and safely fails the quality gate |
+| SQLite source introspection and approved target load | Implemented | Local source immutability, dry-run, approval, replay, destructive confirmation and roundtrip tests | Final exact-head CI |
+| PostgreSQL and MySQL | Implemented | Contract tests; disposable CI runtime tests passed at starting SHA | Repeat disposable service tests on final PR head |
+| SQL Server, Oracle, Snowflake, BigQuery, Redshift | Implemented | Deterministic mocked contract tests; BigQuery SDK client bug fixed | Authorized live services/credentials; production source policy remains fail-closed where enforcement is unverified |
+| Projects, recipes, dataset versions and persisted agent traces | Implemented | SQLite persistence and API tests | Verify exact source SHA via final hosted container run |
+| Production auth, role controls and approval | Implemented | Security/red-team tests, administrator/operator Playwright, exact one-use approval and non-consuming dry-run; operators cannot probe targets, source-backed agent runs, or server-local SQLite schema files | Final exact-head CI and valid review-thread resolution |
+| Browser interface | Implemented | Actual HTTPS Uvicorn/Chromium; login, session, CSRF, dashboard, keyboard, responsive layout and secret non-reflection | Final exact-head CI |
+| Parquet | Implemented as optional runtime | Runtime tests pass in full local suite; pinned in production lock | Final exact-head dependency audit and image smoke |
+| Backup and restore | Implemented | Five tests cover SQLite WAL snapshot, integrity manifest, artifact relocation, locking and archive safety | Real container-volume restore remains untested |
+| Streaming and scale | Implemented for bounded single-table Python stream writers | Reproducible benchmark CLI; 100k/1M evidence recorded in `V1_RELEASE_EVIDENCE.md` | No production SLA claim |
+| Production container | Implemented | Pinned base, non-root user, one worker, persistent `/data`, health probe; CI records image evidence | Refresh build/smoke and image digest at final exact head |
+| Managed deployment | Configuration ready | External credential gate recorded | Authorized host, secrets, persistent volume, HTTPS endpoint and runtime verification |
 
-| Capability | Implementation | Local/runtime evidence | External gate |
-|---|---:|---|---|
-| Core/single/multi-table generation | 100% | automated tests + live local runs | none |
-| DDL / JSON Schema / OpenAPI / Avro ingestion | >=95% | parser/unit tests | vendor edge-corpus expansion remains ongoing |
-| Natural-language modeling | >=95% local path | deterministic hospitality model tests | external LLM smoke pending |
-| Validation / repair | >=95% | forced failure -> repair -> revalidation tests | none |
-| Exports / ZIP | >=95% | artifact/API tests | Parquet requires pyarrow runtime |
-| SQLite connector/load | 100% | real read-only source -> target roundtrip | none |
-| PostgreSQL/MySQL/SQL Server/Oracle/Snowflake/BigQuery/Redshift | implemented | connector contract/catalog tests | real credential-gated smoke pending |
-| Profiling/correlations/business semantics/privacy | >=95% implementation | unit/integration tests | source-specific fidelity can be tuned per system |
-| Streaming generation | >=95% | 1,000,000-row bounded-memory benchmark | none |
-| Projects/recipes/versioning/jobs/agent traces | >=95% | persistence/API tests | none |
-| Agentic orchestration | >=95% | planner safety, trace, quality gate, repair, cancellation tests | external LLM smoke pending |
-| Security/observability | >=95% local application scope | secret redaction, health/readiness/metrics/audit tests | production deployment hardening is environment-specific |
-| UI/UX | >=95% local product shell | rendered Agent Runs/Settings + JS checks | full localhost browser E2E depends on browser environment |
-
-SyntheticForge is not declared globally complete until the external gates in `EXTERNAL_VERIFICATION.md` are executed successfully.
+No percentage is used because live-service and deployment gates require actual external evidence. See `V1_RELEASE_EVIDENCE.md` and `CONNECTOR_CERTIFICATION.md` for exact commit and per-connector boundaries.

@@ -40,10 +40,10 @@ The hospitality demo generates a multi-table relational dataset, validates it, a
 ## Performance benchmark
 
 ```bash
-make benchmark
+python scripts/benchmark_million.py --rows 100000 --format ndjson --seed 2026 --batch-size 10000
 ```
 
-The benchmark exercises the million-row streaming path with bounded batches.
+The benchmark accepts `--rows` from 1 through 10,000,000, `--format` (`ndjson`, `jsonl`, `csv`, or `sql`), `--seed`, and `--batch-size` from 1 through 100,000. It reports the source commit and dirty-tree state, Python/platform details, output format and size, elapsed time, throughput, and peak RSS in bytes and MiB. macOS `ru_maxrss` bytes and Linux `ru_maxrss` KiB are converted separately. The historical default remains 1,000,000 rows; use the explicit 100,000-row command above for a bounded run. Run the million-row workload only on the integrated final SHA in a suitable low-load environment.
 
 ## Credential-gated certification
 

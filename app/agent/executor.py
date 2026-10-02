@@ -148,7 +148,9 @@ class AgentExecutor:
                     source_cfg = req.source_config.model_copy(deep=True)
                     source_cfg.read_only = True
                     connector = create_connector(source_cfg)
+                    connector.receipt_sink=lambda **fields:self.repo.connector_receipt("agent:"+run_id,**fields)
                     connector.connect()
+                    self.repo.connector_receipt("agent:"+run_id,"connector.policy",source_cfg.connector,"allowed",metadata=connector.policy_receipt())
                     tables = connector.introspect_system(req.schema_name or source_cfg.schema_name)
                     self._trace(run, "observation", step, f"Discovered {len(tables)} source tables", {"relationships": sum(len(t.foreign_keys) for t in tables), "read_only": True})
 
@@ -242,7 +244,7 @@ class AgentExecutor:
                         rules=[r.model_dump(mode="json") for t in tables for r in t.business_rules],
                         row_counts={f"{t.schema_name}.{t.name}": len(t.rows) for t in result.tables},
                         validation=result.validation.model_dump(mode="json"), profile=profiles,
-                        generator_version="0.5.0",
+                        generator_version="1.0.0rc1",
                     )
                     artifact = self.repo.save_dataset_artifact(dataset.id, system_to_zip(gen_req, result), "agent-dataset.zip")
                     run.dataset_id = dataset.id; run.artifact_path = artifact; run.approval_state = "pending"

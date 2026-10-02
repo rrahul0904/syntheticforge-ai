@@ -155,14 +155,19 @@ class PostgreSQLConnector(InformationSchemaConnector):
         module = importlib.import_module(driver)
         kwargs = dict(host=self.config.host, port=self.config.port or 5432, dbname=self.config.database, user=self.config.username, password=self.config.password)
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        conn = module.connect(**kwargs)
-        if self.config.read_only:
-            try:
-                conn.autocommit = True
-                cur = conn.cursor(); cur.execute("SET default_transaction_read_only = on"); cur.close()
-            except Exception:
-                pass
-        return conn
+        return module.connect(**kwargs)
+
+    @property
+    def read_only_mechanism(self)->str:return "PostgreSQL default_transaction_read_only session setting"
+
+    def _set_read_only_if_supported(self)->None:
+        self._connection.autocommit=True
+        cur=self._connection.cursor()
+        try:
+            cur.execute("SET default_transaction_read_only = on")
+            cur.execute("SHOW default_transaction_read_only")
+            if str(cur.fetchone()[0]).lower() not in {"on","true","1"}:raise ConnectorError("PostgreSQL did not confirm read-only session enforcement")
+        finally:cur.close()
 
     def list_databases(self) -> list[str]:
         return [str(r[0]) for r in self._query("SELECT datname FROM pg_database WHERE datallowconn AND NOT datistemplate ORDER BY datname")]
@@ -189,15 +194,61 @@ class MySQLConnector(InformationSchemaConnector):
         kwargs = dict(host=self.config.host or "localhost", port=self.config.port or 3306, user=self.config.username, password=self.config.password, database=self.config.database)
         kwargs = {k: v for k, v in kwargs.items() if v is not None}
         if driver == "mysql.connector":
+            kwargs["autocommit"]=True
             return module.connect(**kwargs)
         kwargs["read_timeout"] = int(self.config.extra.get("read_timeout", 30))
+        kwargs["autocommit"]=True
         return module.connect(**kwargs)
+
+    @property
+    def read_only_mechanism(self)->str:return "MySQL START TRANSACTION READ ONLY"
+
+    def _set_read_only_if_supported(self)->None:
+        cur=self._connection.cursor()
+        try:cur.execute("START TRANSACTION READ ONLY")
+        finally:cur.close()
 
     def list_databases(self) -> list[str]:
         return [str(r[0]) for r in self._query("SHOW DATABASES")]
 
     def list_schemas(self) -> list[str]:
         return self.list_databases()
+
+    def _column_rows(self, table: str, schema: str) -> list[dict[str, Any]]:
+        # MySQL returns information_schema column labels in uppercase through
+        # some DB-API drivers; normalize metadata keys without changing row data.
+        return [
+            {str(key).lower(): value for key, value in row.items()}
+            for row in super()._column_rows(table, schema)
+        ]
+
+    def _foreign_keys(self, table: str, schema: str) -> list[ForeignKeySpec]:
+        # MySQL exposes the referenced side directly on KEY_COLUMN_USAGE;
+        # it does not provide information_schema.CONSTRAINT_COLUMN_USAGE.
+        sql = f"""
+        SELECT constraint_name, column_name, referenced_table_name, referenced_column_name
+        FROM information_schema.key_column_usage
+        WHERE table_schema={self.param} AND table_name={self.param}
+          AND referenced_table_name IS NOT NULL
+        ORDER BY constraint_name, ordinal_position
+        """
+        grouped: dict[tuple[str, str], tuple[list[str], list[str]]] = {}
+        for name, column, ref_table, ref_column in self._query(sql, [schema, table]):
+            key = (str(name), str(ref_table))
+            child, parent = grouped.setdefault(key, ([], []))
+            child.append(str(column))
+            parent.append(str(ref_column))
+        return [
+            ForeignKeySpec(
+                name=name,
+                column=children[0],
+                columns=children,
+                references_table=ref_table,
+                references_column=parents[0],
+                references_columns=parents,
+            )
+            for (name, ref_table), (children, parents) in grouped.items()
+        ]
 
 
 class SQLServerConnector(InformationSchemaConnector):
@@ -240,6 +291,14 @@ class OracleConnector(BaseConnector):
         oracledb = importlib.import_module("oracledb")
         dsn = self.config.extra.get("dsn") or oracledb.makedsn(self.config.host or "localhost", self.config.port or 1521, service_name=self.config.database)
         return oracledb.connect(user=self.config.username, password=self.config.password, dsn=dsn)
+
+    @property
+    def read_only_mechanism(self)->str:return "Oracle SET TRANSACTION READ ONLY"
+
+    def _set_read_only_if_supported(self)->None:
+        cur=self._connection.cursor()
+        try:cur.execute("SET TRANSACTION READ ONLY")
+        finally:cur.close()
 
     def list_databases(self) -> list[str]:
         return [self.config.database or "ORACLE"]

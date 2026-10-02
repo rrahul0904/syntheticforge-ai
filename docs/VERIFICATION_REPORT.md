@@ -1,20 +1,7 @@
-# Verification Report — SyntheticForge AI 0.5
+# Verification report — v1.0.0-rc1 candidate
 
-Latest repository verification before GitHub check-in:
+The integrated implementation at code SHA `7d25c124b09bc540c7e928de345c434640b8e3b4` passed local `make verify` on Python 3.13: **110 passed, 2 skipped, 1 warning**. PostgreSQL/MySQL service tests skipped locally because no DSNs were configured. The suite also ran Python compilation, browser JavaScript syntax through the bundled Node runtime, shell syntax, CLI help, and a SQLite source-to-target roundtrip with 50 rows, 100.0 validation quality, 0 broken foreign keys, and an unchanged source.
 
-```text
-pytest:              61 passed
-python compileall:   PASS
-JavaScript syntax:   PASS
-```
+Mission-start hosted runs `36918266093` and `36918274481` passed on earlier SHA `5e55c83243e742938776673abee96816ab1e75c6`, including Python 3.11/3.12, disposable PostgreSQL/MySQL integrations, dependency audit, secret scan, and Docker build/HTTP smoke. Those runs do not certify the integrated candidate. Refreshed exact-head hosted checks and final release evidence are required before merge.
 
-Previously exercised local runtime evidence on this code line includes:
-
-- real Uvicorn health/agent/artifact HTTP flow: v0.5.0 health, completed agent at 100.0 quality, 14 trace events, ZIP artifact downloaded;
-- deterministic agent completion at 100.0 quality;
-- forced validation failure followed by repair and successful revalidation;
-- SQLite read-only source introspection/profile/generation/validation/direct-load into a separate target with zero broken foreign keys and unchanged source;
-- 1,000,000-row streaming benchmark with bounded memory;
-- Chromium-rendered Agent Runs and AI Settings surfaces with no console errors at the mocked API boundary.
-
-Enterprise connector adapters are covered by contract/catalog tests but require credentials and matching vendor runtimes for final real-system smoke certification. See `EXTERNAL_VERIFICATION.md`.
+See [V1_RELEASE_EVIDENCE.md](V1_RELEASE_EVIDENCE.md) for current local results and pending hosted/external gates. The CI workflow runs `make verify` on Python 3.11 and 3.12 and has separate PostgreSQL/MySQL service and production-container jobs.

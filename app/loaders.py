@@ -33,6 +33,7 @@ def _schema_compatible(config:ConnectorConfig,table:GeneratedTable,db:Any)->None
 
 
 def _load_bigquery(config:ConnectorConfig,table:GeneratedTable,batch_size:int,dry_run:bool,mode:str,confirm_destructive:bool)->dict[str,Any]:
+    if config.read_only:raise ValueError("Target loading requires a separate explicit config with read_only=false")
     if mode=="truncate" and not confirm_destructive: raise ValueError("truncate mode requires explicit confirm_destructive=true")
     db=create_connector(config.model_copy(update={"read_only":False}))
     try:
@@ -41,8 +42,14 @@ def _load_bigquery(config:ConnectorConfig,table:GeneratedTable,batch_size:int,dr
         if not project: raise ConnectorError("BigQuery target requires project or database")
         dataset=validate_identifier(table.schema_name); name=validate_identifier(table.name); target=f"{project}.{dataset}.{name}"
         obj=client.get_table(target)
+        nested_schema=any(
+            str(getattr(field,"field_type","")).upper() in {"RECORD","STRUCT"} or bool(getattr(field,"fields",()))
+            for field in obj.schema
+        )
+        if nested_schema or any("." in column.name for column in table.columns):
+            raise ConnectorError("Nested BigQuery target fields are not supported by this loader; dry-run and writes are rejected")
         available={f.name.lower() for f in obj.schema}
-        missing=[c.name for c in table.columns if "." not in c.name and c.name.lower() not in available]
+        missing=[c.name for c in table.columns if c.name.lower() not in available]
         if missing: raise ConnectorError(f"Target table {target} is missing columns: {', '.join(missing)}")
         if dry_run:return {"ok":True,"dry_run":True,"rows":len(table.rows),"target":target,"connector":"bigquery"}
         try:
@@ -72,7 +79,7 @@ def load_table(config:ConnectorConfig,table:GeneratedTable,batch_size:int=1000,d
     if mode not in {"append","truncate"}: raise ValueError("mode must be append or truncate")
     if batch_size<1 or batch_size>100_000: raise ValueError("batch_size must be between 1 and 100000")
     if config.connector=="bigquery": return _load_bigquery(config,table,batch_size,dry_run,mode,confirm_destructive)
-    if config.read_only: config=config.model_copy(update={"read_only":False})
+    if config.read_only and not dry_run:raise ValueError("Target loading requires a separate explicit config with read_only=false")
     if mode=="truncate" and not confirm_destructive: raise ValueError("truncate mode requires explicit confirm_destructive=true")
     schema=table.schema_name; name=table.name; connector=config.connector
     cols=[c.name for c in table.columns]

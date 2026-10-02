@@ -1,4 +1,4 @@
-# SyntheticForge AI 0.5 — Local Agentic Synthetic Data Platform
+# SyntheticForge AI 1.0.0-rc1 — Local Agentic Synthetic Data Platform
 
 SyntheticForge AI is a local-first synthetic test-data platform. Give it a schema, API contract, sample, live read-only database, or plain-English system goal and it can model the system, profile bounded source samples, classify sensitive fields, infer rules, generate relational synthetic data, validate it, repair failed output, version/package the result, and optionally load an approved target.
 
@@ -7,8 +7,9 @@ SyntheticForge is **not AGI** and does not claim to understand every conceivable
 ## Start locally
 
 ```bash
-unzip syntheticforge-ai-v0.5-agentic.zip
-cd syntheticforge-ai-v0.5-agentic
+git clone https://github.com/rrahul0904/syntheticforge-ai.git
+cd syntheticforge-ai
+python -m pip install -e '.[dev,parquet]'
 ./run_local.sh
 ```
 
@@ -20,7 +21,9 @@ run_local.bat
 
 Then open `http://127.0.0.1:8000`. API docs are at `http://127.0.0.1:8000/docs`.
 
-Nothing is deployed to Vercel.
+No externally verified deployment is currently claimed. The release evidence records hosted deployment checks separately from the container application source.
+
+For the release boundary, deployment status, and exact verification evidence, see [the v1 release evidence](docs/V1_RELEASE_EVIDENCE.md), [connector certification matrix](docs/CONNECTOR_CERTIFICATION.md), and [deployment instructions](docs/DEPLOY_NOW.md). The current release candidate is single-node SQLite-backed and is not a claim of external deployment or universal connector certification.
 
 ## Agentic workflow
 
@@ -178,18 +181,9 @@ make demo
 
 GitHub Actions runs the test suite on Python 3.11 and 3.12, compiles Python modules, checks the browser JavaScript syntax, executes the SQLite source-to-target roundtrip, and verifies the CLI entry point. See `docs/DEVELOPMENT.md` for the development and release workflow.
 
-## Verification in this build
+## Verification
 
-Current local evidence:
-
-- 61 automated tests passing
-- agent failure → repair → revalidation test passing
-- AI-planner safety normalization test passing
-- all 8 connector adapters covered by catalog/contract tests
-- real SQLite read-only source → profile → generate → validate → target load roundtrip: 100.0 quality, 0 broken FKs, source unchanged
-- 1,000,000-row streaming benchmark: 7.658 s, ~130,580 rows/s, ~100.66 MB peak RSS in this sandbox run
-- Chromium UI boundary test: Agent Runs + Settings, 0 console errors, secret not rendered
-- JavaScript syntax and Python compile checks passing
+Verification claims are recorded with their exact source commit in [`docs/V1_RELEASE_EVIDENCE.md`](docs/V1_RELEASE_EVIDENCE.md). The current implementation, test totals, hosted CI, image, benchmark, deployment, and external-service status are tracked separately there. Connector status distinguishes contract coverage, disposable runtime tests, and live external certification in [`docs/CONNECTOR_CERTIFICATION.md`](docs/CONNECTOR_CERTIFICATION.md). See [`docs/NEXT_PHASE_EXECUTION_LEDGER.md`](docs/NEXT_PHASE_EXECUTION_LEDGER.md) for integration and review evidence.
 
 Real credential-gated verification commands:
 
