@@ -164,6 +164,43 @@ def test_production_dry_run_needs_no_approval_and_preserves_issued_approval(tmp_
         assert connection.execute("SELECT * FROM people ORDER BY id").fetchall()==[(1,"synthetic only"),(9,"existing")]
 
 
+def test_operator_cannot_probe_arbitrary_targets_or_source_connectors(tmp_path,monkeypatch):
+    password=production_environment(monkeypatch)
+    operator_password="operator-password-with-more-than-fourteen-characters"
+    monkeypatch.setenv("SYNTHETICFORGE_OPERATOR_USERNAME","operator")
+    monkeypatch.setenv("SYNTHETICFORGE_OPERATOR_PASSWORD_HASH",hash_password(operator_password))
+    monkeypatch.setenv("SYNTHETICFORGE_ENV","development")
+    repository=Repository(tmp_path/"state.db")
+    mainmod._repo=repository
+    monkeypatch.setenv("SYNTHETICFORGE_ENV","production")
+    opened=[]
+    monkeypatch.setattr(mainmod,"load_table",lambda *args,**kwargs: opened.append((args,kwargs)) or {"dry_run":True,"rows":0})
+    probe={
+        "config":{"connector":"postgresql","host":"198.51.100.1","port":5432,"database":"customer","username":"reader","password":"secret","read_only":False},
+        "table":{"name":"accounts","schema_name":"public","columns":[{"name":"id","data_type":"integer","primary_key":True}],"foreign_keys":[],"rows":[{"id":1}]},
+        "dry_run":True,
+    }
+    with TestClient(app,base_url="https://testserver") as client:
+        login=client.post("/api/auth/login",json={"username":"operator","password":operator_password})
+        assert login.status_code==200,login.text
+        response=client.post("/api/load",json=probe,headers={"X-CSRF-Token":login.json()["csrf_token"]})
+        assert response.status_code==403
+        assert opened==[]  # The operator cannot trigger a DBAPI connection or schema inspection.
+        agent_response=client.post("/api/agent-runs",json={
+            "goal":"Profile a customer source and create a synthetic QA dataset",
+            "source_config":probe["config"],
+        },headers={"X-CSRF-Token":login.json()["csrf_token"]})
+        assert agent_response.status_code==403
+        assert opened==[]
+
+        admin_login=client.post("/api/auth/login",json={"username":"admin","password":password})
+        assert admin_login.status_code==200,admin_login.text
+        admin_response=client.post("/api/load",json=probe,headers={"X-CSRF-Token":admin_login.json()["csrf_token"]})
+        assert admin_response.status_code==200,admin_response.text
+        assert admin_response.json()["dry_run"] is True
+        assert len(opened)==1
+
+
 def test_production_destructive_load_keeps_confirmation_gate(tmp_path,monkeypatch):
     password=production_environment(monkeypatch)
     monkeypatch.setenv("SYNTHETICFORGE_ENV","development")

@@ -150,7 +150,7 @@ def metrics(): return prometheus_text()
 
 
 def _admin_only(path:str)->bool:
-    return path in {"/api/diagnostics","/api/audit","/api/connector-receipts","/api/provider-status","/api/provider-settings","/api/write-approvals"} or path.startswith("/api/connectors/") or path.endswith("/approve-load")
+    return path in {"/api/diagnostics","/api/audit","/api/connector-receipts","/api/provider-status","/api/provider-settings","/api/write-approvals","/api/load"} or path.startswith("/api/connectors/") or path.endswith("/approve-load")
 
 
 def _authenticate(request:Request)->AuthIdentity|None:
@@ -515,7 +515,9 @@ def _run_agent(run_id:str,payload:AgentRunCreateRequest):
 
 
 @app.post("/api/agent-runs")
-def create_agent_run(payload:AgentRunCreateRequest,background_tasks:BackgroundTasks):
+def create_agent_run(payload:AgentRunCreateRequest,background_tasks:BackgroundTasks,request:Request):
+    if production_mode() and payload.source_config and _identity(request).role!="admin":
+        raise HTTPException(status_code=403,detail="Administrator role required for agent source connectors")
     if payload.project_id:
         try: repo().get_project(payload.project_id)
         except KeyError as exc: raise HTTPException(status_code=404,detail="Project not found") from exc

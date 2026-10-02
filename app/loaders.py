@@ -42,8 +42,14 @@ def _load_bigquery(config:ConnectorConfig,table:GeneratedTable,batch_size:int,dr
         if not project: raise ConnectorError("BigQuery target requires project or database")
         dataset=validate_identifier(table.schema_name); name=validate_identifier(table.name); target=f"{project}.{dataset}.{name}"
         obj=client.get_table(target)
+        nested_schema=any(
+            str(getattr(field,"field_type","")).upper() in {"RECORD","STRUCT"} or bool(getattr(field,"fields",()))
+            for field in obj.schema
+        )
+        if nested_schema or any("." in column.name for column in table.columns):
+            raise ConnectorError("Nested BigQuery target fields are not supported by this loader; dry-run and writes are rejected")
         available={f.name.lower() for f in obj.schema}
-        missing=[c.name for c in table.columns if "." not in c.name and c.name.lower() not in available]
+        missing=[c.name for c in table.columns if c.name.lower() not in available]
         if missing: raise ConnectorError(f"Target table {target} is missing columns: {', '.join(missing)}")
         if dry_run:return {"ok":True,"dry_run":True,"rows":len(table.rows),"target":target,"connector":"bigquery"}
         try:

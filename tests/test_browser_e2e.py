@@ -295,11 +295,13 @@ def test_production_operator_dashboard_keeps_safe_workspace_available(tmp_path: 
             page = context.new_page()
             page.set_default_timeout(8_000)
             page.goto(base, wait_until="domcontentloaded")
+            login_dialog = page.get_by_role("dialog", name="Sign in to SyntheticForge")
 
             # Seed ordinary workspace state as an administrator, and verify diagnostics still work for admins.
+            expect(login_dialog).to_be_visible(timeout=15_000)
             page.locator("#loginUsername").fill("admin")
             page.locator("#loginPassword").fill(admin_password)
-            page.get_by_role("button", name="Sign in").click()
+            login_dialog.get_by_role("button", name="Sign in").click(timeout=15_000)
             page.get_by_role("heading", name="Build production-shaped test data without exposing production data.").wait_for()
             expect(page.locator("#parquetStatus")).not_to_have_text("Checking")
             assert page.locator("#parquetStatus").text_content().strip() in {"Operational", "Optional driver"}
@@ -311,12 +313,12 @@ def test_production_operator_dashboard_keeps_safe_workspace_available(tmp_path: 
             assert seeded["status"] == 200, seeded
             assert page.evaluate("fetch('/api/diagnostics').then(r=>r.status)") == 200
             page.get_by_role("button", name="Sign out").click()
-            page.get_by_role("heading", name="Sign in to SyntheticForge").wait_for()
+            expect(login_dialog).to_be_visible(timeout=15_000)
 
             # An operator sees the workspace and may read projects/jobs and generate records.
             page.locator("#loginUsername").fill("operator")
             page.locator("#loginPassword").fill(operator_password)
-            page.get_by_role("button", name="Sign in").click()
+            login_dialog.get_by_role("button", name="Sign in").click(timeout=15_000)
             page.get_by_role("heading", name="Build production-shaped test data without exposing production data.").wait_for()
             page.locator("#recentProjects").get_by_text("Operator-visible project", exact=True).wait_for()
             assert page.locator("#dashProjects").inner_text() == "1"

@@ -7,7 +7,8 @@ import pytest
 
 from app.connectors import create_connector
 from app.connectors.base import ConnectorError
-from app.models import ConnectorConfig
+from app.loaders import _load_bigquery
+from app.models import ColumnSpec, ConnectorConfig, GeneratedTable
 
 
 def config(connector: str, **fields) -> ConnectorConfig:
@@ -227,6 +228,50 @@ def test_bigquery_production_read_only_policy_remains_fail_closed(monkeypatch):
     with pytest.raises(ConnectorError, match="read-only enforcement is unverified"):
         adapter.connect()
     assert not called
+
+
+def test_bigquery_nested_target_dry_run_and_write_fail_closed(monkeypatch):
+    nested = SimpleNamespace(
+        name="address", field_type="RECORD", mode="NULLABLE", fields=[
+            SimpleNamespace(name="city", field_type="STRING", mode="NULLABLE", fields=[]),
+        ],
+    )
+    target = SimpleNamespace(schema=[SimpleNamespace(name="id", field_type="INT64", fields=[]), nested])
+
+    class Client:
+        writes = 0
+
+        def get_table(self, table_ref):
+            assert table_ref == "analytics-project.qa.events"
+            return target
+
+        def load_table_from_json(self, *_args, **_kwargs):
+            self.writes += 1
+            return SimpleNamespace(result=lambda: None)
+
+    class Adapter:
+        def __init__(self):
+            self._connection = Client()
+
+        def connect(self):
+            return self
+
+        def close(self):
+            pass
+
+    adapter = Adapter()
+    monkeypatch.setattr("app.loaders.create_connector", lambda _config: adapter)
+    target_config = config("bigquery", project="analytics-project", database=None, read_only=False)
+    generated = GeneratedTable(
+        name="events", schema_name="qa",
+        columns=[ColumnSpec(name="id", data_type="INT64"), ColumnSpec(name="address.city", data_type="STRING")],
+        foreign_keys=[], rows=[{"id": 1, "address.city": "X"}],
+    )
+
+    for dry_run in (True, False):
+        with pytest.raises(ConnectorError, match="Nested BigQuery target fields are not supported"):
+            _load_bigquery(target_config, generated, batch_size=10, dry_run=dry_run, mode="append", confirm_destructive=False)
+    assert adapter._connection.writes == 0
 
 
 def test_redshift_postgresql_catalog_contract(monkeypatch):
