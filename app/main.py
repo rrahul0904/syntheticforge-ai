@@ -250,6 +250,13 @@ def diagnostics():
     return {"version":"1.0.0-rc1","state_backend":"sqlite-single-node","state_db":str(repo().path) if not production_mode() else repo().path.name,"metrics":metrics_snapshot(),"connectors":[x.model_dump() for x in connector_statuses()],"max_upload_bytes":max_upload_bytes(),"parquet_available":parquet_available(),"agent_runs":len(repo().list_agent_runs(limit=1000)),"production":production_mode()}
 
 
+@app.get("/api/dashboard-summary")
+def dashboard_summary():
+    """Return the small, role-safe operational summary shown on the dashboard."""
+    counters=metrics_snapshot().get("counters",{})
+    return {"generated_rows":int(counters.get("generated_rows_total",0))}
+
+
 @app.get("/api/provider-status")
 def provider_status():
     return ai_provider_status()
