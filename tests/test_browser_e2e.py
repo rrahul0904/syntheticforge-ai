@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import socket
 import ssl
 import subprocess
@@ -39,6 +40,7 @@ def test_production_browser_login_generation_project_agent_and_logout(tmp_path: 
         "SYNTHETICFORGE_CORS_ORIGINS": "https://127.0.0.1",
         "SYNTHETICFORGE_APPLICATION_SHA": "b" * 40,
         "SYNTHETICFORGE_REPLICAS": "1",
+        "SYNTHETICFORGE_SESSION_TTL_SECONDS": "28800",
         "WEB_CONCURRENCY": "1",
         "PYTHONPATH": str(Path.cwd()),
     })
@@ -65,11 +67,29 @@ def test_production_browser_login_generation_project_agent_and_logout(tmp_path: 
             severe_console = []
             page.on("pageerror", lambda error: severe_console.append(str(error)))
             page.goto(base, wait_until="domcontentloaded")
-            page.locator("#loginUsername").fill("admin")
-            page.locator("#loginPassword").fill("browser-test-password-with-32-characters")
+            login_dialog = page.get_by_role("dialog", name="Sign in to SyntheticForge")
+            expect(login_dialog).to_be_visible()
+            expect(login_dialog).to_have_attribute("open", "")
+            username = login_dialog.get_by_label("Username")
+            password = login_dialog.get_by_label("Password")
+            expect(username).to_be_focused()
+            page.keyboard.press("Tab")
+            expect(password).to_be_focused()
+            page.keyboard.press("Tab")
+            expect(page.get_by_role("button", name="Sign in")).to_be_focused()
+            username.fill("admin")
+            password.fill("browser-test-password-with-32-characters")
             page.get_by_role("button", name="Sign in").click()
             page.get_by_role("heading", name="Build production-shaped test data without exposing production data.").wait_for()
+            expect(page.locator("#loginPassword")).to_have_value("")
             assert page.get_by_text("Capability health").is_visible()
+
+            # Same-origin writes must fail closed without the session CSRF token.
+            csrf = page.evaluate("fetch('/api/auth/session').then(r=>r.json()).then(s=>s.csrf_token)")
+            assert csrf and csrf not in page.locator("body").inner_text()
+            assert csrf not in page.content()
+            csrf_denial = page.evaluate("fetch('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'CSRF denied'})}).then(r=>r.status)")
+            assert csrf_denial == 403
 
             page.locator('[data-view="generate"]').click()
             page.locator("#sysSchemaInput").fill("CREATE TABLE public.people (id INTEGER PRIMARY KEY, name VARCHAR(80) NOT NULL);")
@@ -132,6 +152,43 @@ def test_production_browser_login_generation_project_agent_and_logout(tmp_path: 
             agent_download.value.save_as(agent_artifact)
             assert agent_artifact.stat().st_size > 100
 
+            # Provider secrets are accepted into a password field, never echoed in status or page markup.
+            page.locator('[data-view="settings"]').click()
+            expect(page.locator("#providerStatus")).to_contain_text("No external AI configured")
+            page.locator("#providerType").select_option("openai-compatible")
+            page.locator("#providerModel").fill("browser-smoke-model")
+            page.locator("#providerBaseUrl").fill("https://provider.invalid/v1")
+            provider_secret = "browser-secret-never-render-this-7f6c8d2a"
+            page.locator("#providerApiKey").fill(provider_secret)
+            page.locator("#saveProviderBtn").click()
+            expect(page.locator("#providerStatus")).to_contain_text("API key present: yes")
+            expect(page.locator("#providerApiKey")).to_have_value("")
+            assert provider_secret not in page.locator("body").inner_text()
+            assert provider_secret not in page.content()
+            page.locator("#clearProviderBtn").click()
+            expect(page.locator("#providerStatus")).to_contain_text("No external AI configured")
+
+            # Expire a second real session in the isolated test database and verify the auth boundary immediately.
+            expiry_context = browser.new_context(ignore_https_errors=True)
+            expiry_page = expiry_context.new_page()
+            expiry_page.goto(base, wait_until="domcontentloaded")
+            expiry_page.locator("#loginUsername").fill("admin")
+            expiry_page.locator("#loginPassword").fill("browser-test-password-with-32-characters")
+            with expiry_page.expect_response(lambda response: response.url.endswith("/api/auth/login")) as expiry_login:
+                expiry_page.get_by_role("button", name="Sign in").click()
+            assert expiry_login.value.status == 200, expiry_login.value.text()
+            expect(expiry_page.get_by_role("dialog", name="Sign in to SyntheticForge")).to_be_hidden()
+            session_cookie = next(cookie["value"] for cookie in expiry_context.cookies(base) if cookie["name"] == "sf_session")
+            session_digest = hashlib.sha256(session_cookie.encode()).hexdigest()
+            with sqlite3.connect(tmp_path / "data" / "state.db") as state_db:
+                changed = state_db.execute("UPDATE auth_sessions SET expires_at=? WHERE token_hash=?", ("2000-01-01T00:00:00+00:00", session_digest)).rowcount
+            assert changed == 1
+            expired = expiry_page.evaluate("Promise.all([fetch('/api/auth/session').then(r=>r.json()),fetch('/api/projects').then(r=>r.status)])")
+            assert expired[0]["authenticated"] is False
+            assert expired[0]["role"] is None
+            assert expired[1] == 401
+            expiry_context.close()
+
             browser_state = context.storage_state()
             page.close()
             context.close()
@@ -152,16 +209,35 @@ def test_production_browser_login_generation_project_agent_and_logout(tmp_path: 
             page = context.new_page()
             page.set_default_timeout(8_000)
             page.goto(base, wait_until="domcontentloaded")
+            restored_session = page.evaluate("fetch('/api/auth/session').then(r=>r.json())")
+            assert restored_session["authenticated"] is True
+            assert restored_session["role"] == "admin"
+            expect(page.get_by_role("dialog", name="Sign in to SyntheticForge")).to_be_hidden()
+            expect(page.get_by_role("button", name="Sign out")).to_be_visible()
             page.locator('[data-view="projects"]').click()
             page.locator("#projectList").get_by_text("Browser smoke", exact=True).wait_for()
 
+            # Check document-level horizontal overflow on the main workspace screens at desktop and phone widths.
+            for view in ("dashboard", "generate", "connectors", "projects", "jobs", "agents"):
+                page.locator(f"[data-view='{view}']").click()
+                page.locator(f"#{view}View.active").wait_for()
+                sizes = page.evaluate("({client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth})")
+                assert sizes["scroll"] <= sizes["client"], f"Horizontal page overflow on {view} at desktop: {sizes}"
             page.set_viewport_size({"width": 390, "height": 844})
+            for view in ("dashboard", "generate", "connectors", "projects", "jobs", "agents"):
+                page.locator(f"[data-view='{view}']").click()
+                page.locator(f"#{view}View.active").wait_for()
+                sizes = page.evaluate("({client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth})")
+                assert sizes["scroll"] <= sizes["client"], f"Horizontal page overflow on {view} at 390px: {sizes}"
             page.keyboard.press("Tab")
             assert page.locator("body").is_visible()
             assert not severe_console, f"Browser page errors: {severe_console}"
             page.set_viewport_size({"width": 1280, "height": 900})
             page.get_by_role("button", name="Sign out").click()
-            page.get_by_role("heading", name="Sign in to SyntheticForge").wait_for()
+            expect(page.get_by_role("dialog", name="Sign in to SyntheticForge")).to_be_visible()
+            revoked = page.evaluate("Promise.all([fetch('/api/auth/session').then(r=>r.json()),fetch('/api/projects').then(r=>r.status)])")
+            assert revoked[0]["authenticated"] is False
+            assert revoked[1] == 401
             browser.close()
     finally:
         process.terminate()
