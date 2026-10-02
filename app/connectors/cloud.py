@@ -88,29 +88,33 @@ class BigQueryConnector(BaseConnector):
     def _query(self, sql: str, params=None):
         if params:
             raise ConnectorError("BigQuery connector uses fully parameterized high-level methods")
-        return [tuple(row.values()) for row in self.connect().query(sql).result()]
+        return [tuple(row.values()) for row in self.connect()._connection.query(sql).result()]
 
     def test_connection(self) -> dict[str, Any]:
         try:
-            client=self.connect(); next(iter(client.list_datasets(max_results=1)), None)
+            client=self.connect()._connection; next(iter(client.list_datasets(max_results=1)), None)
             return {"ok":True,"connector":"bigquery","result":1}
         except Exception as exc:
             return {"ok":False,"connector":"bigquery","error":self.safe_error(exc)}
 
     def list_databases(self) -> list[str]:
-        return [self.config.project or getattr(self.connect(),"project","")]
+        client=self.connect()._connection
+        return [self.config.project or getattr(client,"project","")]
 
     def list_schemas(self) -> list[str]:
-        return [d.dataset_id for d in self.connect().list_datasets()]
+        client=self.connect()._connection
+        return [d.dataset_id for d in client.list_datasets()]
 
     def list_tables(self, schema_name: str | None = None) -> list[str]:
         dataset=validate_identifier(schema_name or self.config.schema_name or "")
-        return [t.table_id for t in self.connect().list_tables(dataset)]
+        client=self.connect()._connection
+        return [t.table_id for t in client.list_tables(dataset)]
 
     def describe_table(self, table_name: str, schema_name: str | None = None) -> TableSpec:
         table=validate_identifier(table_name); dataset=validate_identifier(schema_name or self.config.schema_name or "")
-        project=self.config.project or self.config.database or self.connect().project
-        obj=self.connect().get_table(f"{project}.{dataset}.{table}")
+        client=self.connect()._connection
+        project=self.config.project or self.config.database or client.project
+        obj=client.get_table(f"{project}.{dataset}.{table}")
         columns=[]
         def add_field(field,prefix=""):
             name=f"{prefix}{field.name}"
@@ -123,10 +127,10 @@ class BigQueryConnector(BaseConnector):
         return TableSpec(name=table,schema_name=dataset,columns=columns,row_count=getattr(obj,"num_rows",None) or None)
 
     def sample_rows(self, table_name: str, schema_name: str | None = None, limit: int = 1000) -> list[dict[str, Any]]:
-        table=validate_identifier(table_name); dataset=validate_identifier(schema_name or self.config.schema_name or ""); project=self.config.project or self.config.database or self.connect().project
+        table=validate_identifier(table_name); dataset=validate_identifier(schema_name or self.config.schema_name or ""); client=self.connect()._connection; project=self.config.project or self.config.database or client.project
         limit=max(1,min(int(limit),100_000))
         query=f"SELECT * FROM `{project}.{dataset}.{table}` LIMIT {limit}"
-        return [dict(row.items()) for row in self.connect().query(query).result()]
+        return [dict(row.items()) for row in client.query(query).result()]
 
     def close(self) -> None:
         if self._connection is not None and hasattr(self._connection,"close"):
