@@ -2,7 +2,7 @@
 
 ## Release state
 
-SyntheticForge AI is a v1.0.0-rc1 candidate. Application code passes local `make verify` at `7d25c124b09bc540c7e928de345c434640b8e3b4`; 100k and 1M benchmark measurements were run at `2ff5f1d7d76438f9805c253162d4907501344b5f` before a production authorization-only follow-up. The refreshed follow-up commit is not pushed yet. Deployment and external enterprise connector/AI certification remain unavailable without authorized credentials.
+SyntheticForge AI is a v1.0.0-rc1 candidate. Application code passes local `make verify` at `7d25c124b09bc540c7e928de345c434640b8e3b4`; hosted code, service and container checks passed at `84be249c1e58c4f83b92132cb2129740f597fd91`. The current docs-only evidence update awaits its exact-head CI. Deployment and external enterprise connector/AI certification remain unavailable without authorized credentials.
 
 Current mission evidence:
 
@@ -11,7 +11,7 @@ Current mission evidence:
 - Agentic deterministic mode: mandatory gates, malformed/untrusted planning, provider timeout fallback, relational repair, and persisted failed-then-passing validation traces are covered.
 - Backup/restore: **5 passed**, including WAL normalization, manifest integrity, relocation, lock refusal, empty destination, and traversal rejection.
 - Connector contract suite passed with two PostgreSQL/MySQL service tests skipped locally; mocked cloud-adapter checks do not claim live certification. Final-head hosted service runs remain pending.
-- 100k and 1M NDJSON benchmarks passed at `2ff5f1d`; results and environment are in `V1_RELEASE_EVIDENCE.md`. Refreshed exact-head hosted CI/image evidence remains pending.
+- 100k and 1M NDJSON benchmarks passed at `2ff5f1d`; results and environment are in `V1_RELEASE_EVIDENCE.md`. Hosted image and service evidence passed at `84be249`; exact-head docs-only CI remains pending.
 - Operators are blocked from direct target dry-runs and source-backed agent runs before connector activity, and production SQLite file schema imports require an admin browser session; nested BigQuery target load and dry-run both fail closed until nested row reshaping is supported.
 - Deployment: `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED`; no live URL is claimed.
 

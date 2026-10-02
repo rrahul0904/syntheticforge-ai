@@ -15,7 +15,7 @@ This ledger records the implementation, integration, and evidence for the v1.0.0
 | Starting review findings | `4159282386` (dry-run approval) and `4159282406` (operator dashboard) |
 | Integrated application-code SHA | `7d25c124b09bc540c7e928de345c434640b8e3b4` |
 | Benchmark SHA | `2ff5f1d7d76438f9805c253162d4907501344b5f`; benchmark ran before a production authorization-only follow-up |
-| Current pushed PR head | `aa602851fdcb7f24a733484f848449a4922b25bb`; final code and evidence await push and exact-head CI |
+| Current pushed PR head | `84be249c1e58c4f83b92132cb2129740f597fd91`; code/workflow CI is green in push run `37023127940` and PR run `37023133621`; final evidence-doc commit is pending |
 | Execution date | 2026-10-02 |
 
 ## Agent handoffs
@@ -38,18 +38,18 @@ This ledger records the implementation, integration, and evidence for the v1.0.0
 |---|---|
 | 0 — review blockers | Implemented and focused-tested: dry-run gate, operator summary, admin diagnostics, safe dashboard rendering, target/source-agent restrictions, nested BigQuery fail-closed validation, and admin-only production SQLite schema-file imports. Valid GitHub threads remain to be resolved after final CI. |
 | 1 — full regression | `make verify` passed locally at code SHA `7d25c124b09bc540c7e928de345c434640b8e3b4`: 110 passed, 2 skipped, 1 warning on Python 3.13. CI at exact final PR head remains pending. |
-| 2 — database connectors | SQLite local runtime; PostgreSQL/MySQL disposable CI passed only at starting SHA pending refreshed CI; SQL Server/Oracle/Snowflake/BigQuery/Redshift have contract mocks only and are blocked from live external certification. |
+| 2 — database connectors | SQLite local runtime; PostgreSQL/MySQL disposable CI passed at `84be249`; SQL Server/Oracle/Snowflake/BigQuery/Redshift have contract mocks only and are blocked from live external certification. |
 | 3–4 — agent and quality | Deterministic mode, malformed/untrusted plans, timeout fallback, relational PK/FK/date/enum repair, revalidation, persisted trace/artifact covered. Current deterministic repair does not repair refund-overpayment semantics; the run remains safely below quality threshold and fails closed. |
 | 5 — browser UX | Production-server Playwright covers administrator/operator dashboard, sessions, CSRF, keyboard, responsive overflow, and secret non-reflection. Full suite passed locally. |
 | 6 — security | Red-team and production tests passed. CORS preflight works only for configured origins; protected actual requests remain authenticated. Production SQLite schema-file imports are admin-session-only; that role gate is not a filesystem sandbox for administrators. |
 | 7 — durability | Backup/restore: 5 passed with WAL handling and manifest validation. Actual container-volume restart/restore remains untested locally; image smoke runs in hosted CI. |
 | 8 — performance | 100k and 1M NDJSON runs completed on clean application SHA `2ff5f1d`; details are in `V1_RELEASE_EVIDENCE.md`. These single-machine measurements are not an SLA. |
-| 9 — container | Pinned Python base, non-root user, persistent `/data`, healthcheck, single worker, OCI source/build labels. Updated CI emits image config digest, UTC build date, Python and application versions; verify on exact-head hosted run. |
+| 9 — container | Pinned Python base, non-root user, persistent `/data`, healthcheck, single worker, OCI source/build labels. Image smoke and metadata evidence passed at `84be249`; recorded in `V1_RELEASE_EVIDENCE.md`. |
 | 10–13 — external gates | No authorized managed-host project/credentials, live enterprise connector credentials, or external AI credentials were found. No deployment or live external certification claimed. |
-| 14 — release evidence | Update `V1_RELEASE_EVIDENCE.md` after benchmark and exact-head hosted CI; keep final SHA and image evidence exact. |
+| 14 — release evidence | Local benchmarks and hosted candidate CI/image evidence are recorded; final docs-only head CI is the remaining exact-head check. |
 | 15 — tracker | Canonical workbook unavailable after repository/attachment/bounded Documents search; proposal recorded in `PROJECT_TRACKER_UPDATE.md`. |
-| 16 — independent review | H's re-review after the SQLite path fix at final application SHA remains pending. |
-| 17 — PR finalization and merge | Push final evidence, pass exact-head CI, resolve valid review threads, satisfy branch protection and independent approval, then merge as explicitly authorized by the user. Verify `main` and any resulting GitHub deployment status after merge. |
+| 16 — independent review | H reviewed code SHA `7d25c12`, confirmed the final SQLite-path fix, and found no remaining high or medium issue. Both valid GitHub review threads are resolved. |
+| 17 — PR finalization and merge | Push final evidence, pass exact-head CI, then merge as explicitly authorized. Branch protection and rulesets were not configured at the last check; no approval requirement was enforced. Verify `main` and any resulting GitHub deployment status after merge. |
 
 ## External boundaries
 

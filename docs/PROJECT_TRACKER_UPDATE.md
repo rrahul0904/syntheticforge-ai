@@ -13,8 +13,8 @@ Tracker workbook update state: **not modified**. No canonical tracker workbook w
 | Implementation state | v1.0.0-rc1 candidate; review fixes, connector/agent regressions, backup/restore, operator source/target restrictions, and admin-only production SQLite file imports are integrated |
 | Deployment state | `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED` (deployment not executed) |
 | Last verified date | 2026-10-02 (local `make verify` passed at integrated code SHA; refreshed hosted CI pending) |
-| Blockers | Exact-head hosted CI and independent review; external deployment, connector and AI credentials; canonical workbook unavailable |
-| Next concrete action | Complete local verification and review, push PR #2, pass exact-head CI and satisfy repository review rules, then merge as authorized |
+| Blockers | Final evidence-doc SHA hosted CI; external deployment, connector and AI credentials; canonical workbook unavailable |
+| Next concrete action | Pass final exact-head CI on PR #2, then merge as authorized and verify `main` plus GitHub deployment status |
 | Evidence | `V1_RELEASE_EVIDENCE.md`, `CONNECTOR_CERTIFICATION.md`, `DEPLOY_NOW.md` |
 
 ## Selective capability donors
