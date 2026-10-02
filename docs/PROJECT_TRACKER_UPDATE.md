@@ -9,12 +9,12 @@ Tracker workbook update state: **not modified**. No canonical tracker workbook w
 | Repository | `rrahul0904/syntheticforge-ai` |
 | Relationship | Canonical product |
 | Mission start SHA | `5e55c83243e742938776673abee96816ab1e75c6` |
-| Integrated local code SHA | `ab7c6644b692969217c2b4fcab2ed8fec008c3a3`; docs and benchmark evidence follow in later commits |
-| Implementation state | v1.0.0-rc1 candidate; review fixes, connector/agent regressions, backup/restore, and local full verification are integrated |
+| Integrated local code SHA | `7d25c124b09bc540c7e928de345c434640b8e3b4` |
+| Implementation state | v1.0.0-rc1 candidate; review fixes, connector/agent regressions, backup/restore, operator source/target restrictions, and admin-only production SQLite file imports are integrated |
 | Deployment state | `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED` (deployment not executed) |
-| Last verified date | 2026-10-02 (local full verification at integrated code SHA; refreshed hosted CI pending) |
-| Blockers | Final benchmark and exact-head hosted CI/review; external deployment, connector and AI credentials; canonical workbook unavailable |
-| Next concrete action | Finish exact-head release evidence, push PR #2, pass CI and required independent review, then merge if branch protection permits |
+| Last verified date | 2026-10-02 (local `make verify` passed at integrated code SHA; refreshed hosted CI pending) |
+| Blockers | Exact-head hosted CI and independent review; external deployment, connector and AI credentials; canonical workbook unavailable |
+| Next concrete action | Complete local verification and review, push PR #2, pass exact-head CI and satisfy repository review rules, then merge as authorized |
 | Evidence | `V1_RELEASE_EVIDENCE.md`, `CONNECTOR_CERTIFICATION.md`, `DEPLOY_NOW.md` |
 
 ## Selective capability donors

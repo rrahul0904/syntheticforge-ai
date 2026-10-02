@@ -13,9 +13,9 @@ This ledger records the implementation, integration, and evidence for the v1.0.0
 | PR state at start | Open, mergeable, not draft, not merged |
 | Starting CI | Push run `36918266093` and PR run `36918274481` passed at the starting SHA |
 | Starting review findings | `4159282386` (dry-run approval) and `4159282406` (operator dashboard) |
-| Integrated application-code SHA | `ab7c6644b692969217c2b4fcab2ed8fec008c3a3` |
-| Clean benchmark SHA | `f9a4116bf1218e7d6490f82572d54247be395b90` (documentation checkpoint; no application code changed after full verification) |
-| Current PR head | Still the starting SHA until final evidence is committed and pushed |
+| Integrated application-code SHA | `7d25c124b09bc540c7e928de345c434640b8e3b4` |
+| Benchmark SHA | `2ff5f1d7d76438f9805c253162d4907501344b5f`; benchmark ran before a production authorization-only follow-up |
+| Current pushed PR head | `aa602851fdcb7f24a733484f848449a4922b25bb`; final code and evidence await push and exact-head CI |
 | Execution date | 2026-10-02 |
 
 ## Agent handoffs
@@ -30,25 +30,25 @@ This ledger records the implementation, integration, and evidence for the v1.0.0
 | B — connector contracts | `codex/sf-pr2-connector-contracts`, managed isolated worktree | `d2b3b97c84d120ac9de7d6c466e507dd53b550ae` | `54531e51695a8ed59441cb9073409f81e7ad2c84` | Seven deterministic adapter tests for SQL Server, Oracle, Snowflake, BigQuery, Redshift and MySQL metadata casing. Found and fixed BigQuery wrapper/client calls; production read-only remains fail-closed. 7 passed, 2 live-service tests skipped. | Integrated as `bd0136f`; 7 passed, 2 skipped locally |
 | D — agentic quality | `codex/sf-pr2-agentic-validation`, managed isolated worktree | `d2b3b97c84d120ac9de7d6c466e507dd53b550ae` | `183e474f4ec7872f08532ffb0678f21f15bef0f6` | Mandatory gates, malformed output, provider timeout fallback, relational repair and persistence. Fixed numeric PK repair collision. 49 passed. Refund-overpayment repair remains unsupported and fails closed at quality gate. | Integrated as `ab7c664`; focused 49 passed locally |
 | E — benchmark/image evidence | `codex/sf-pr2-runtime`, `/tmp/sf-pr2-runtime` | `8b0f94aea8eededff59d768add2dfaa64a320e8a` | `9ed5bafd8f1963c8f5ff8a54a9de9d2c70e32e95` | Bounded reproducible benchmark CLI, valid macOS/Linux RSS units, image SHA/digest/build-time/Python/app evidence in CI summary, corrected scale documentation. Focused tests: 12 passed. | Integrated as `1bfc6f1`; 100k/1M runs and CI image evidence still pending |
-| H — initial independent observer | Read-only supervisor review | `5e55c83243e742938776673abee96816ab1e75c6` | `5e55c83243e742938776673abee96816ab1e75c6` | Independently reproduced both Phase 0 blockers; identified stale release claims; no other blocker in bounded initial pass. | Final exact-head review still required |
+| H — independent observer and follow-up reviewer | Read-only supervisor review | `5e55c83243e742938776673abee96816ab1e75c6` | `7d25c124b09bc540c7e928de345c434640b8e3b4` | Reproduced operator target dry-run/source-backed agent access, nested BigQuery target mismatch, and SQLite schema-file metadata access. Target/source-agent restrictions, BigQuery fail-closed validation, and admin-only production SQLite schema imports are implemented with regressions. Reviewer recheck at the final code SHA is pending. | Fixes integrated through `2ff5f1d` and `7d25c12`; fresh review pending |
 
 ## Acceptance state
 
 | Phase | State and evidence |
 |---|---|
-| 0 — review blockers | Implemented and focused-tested: dry-run gate, operator summary, admin diagnostics, and safe dashboard rendering. Valid GitHub threads remain to be resolved after final CI. |
-| 1 — full regression | `make verify` passed locally at code SHA `ab7c6644b692969217c2b4fcab2ed8fec008c3a3`: 107 passed, 2 skipped, 1 warning on Python 3.13. CI at exact final PR head remains pending. |
+| 0 — review blockers | Implemented and focused-tested: dry-run gate, operator summary, admin diagnostics, safe dashboard rendering, target/source-agent restrictions, nested BigQuery fail-closed validation, and admin-only production SQLite schema-file imports. Valid GitHub threads remain to be resolved after final CI. |
+| 1 — full regression | `make verify` passed locally at code SHA `7d25c124b09bc540c7e928de345c434640b8e3b4`: 110 passed, 2 skipped, 1 warning on Python 3.13. CI at exact final PR head remains pending. |
 | 2 — database connectors | SQLite local runtime; PostgreSQL/MySQL disposable CI passed only at starting SHA pending refreshed CI; SQL Server/Oracle/Snowflake/BigQuery/Redshift have contract mocks only and are blocked from live external certification. |
 | 3–4 — agent and quality | Deterministic mode, malformed/untrusted plans, timeout fallback, relational PK/FK/date/enum repair, revalidation, persisted trace/artifact covered. Current deterministic repair does not repair refund-overpayment semantics; the run remains safely below quality threshold and fails closed. |
 | 5 — browser UX | Production-server Playwright covers administrator/operator dashboard, sessions, CSRF, keyboard, responsive overflow, and secret non-reflection. Full suite passed locally. |
-| 6 — security | Red-team and production tests passed. CORS preflight works only for configured origins; protected actual requests remain authenticated. SQLite schema input exposes metadata for caller-selected files readable by the service process and is not a filesystem sandbox. |
+| 6 — security | Red-team and production tests passed. CORS preflight works only for configured origins; protected actual requests remain authenticated. Production SQLite schema-file imports are admin-session-only; that role gate is not a filesystem sandbox for administrators. |
 | 7 — durability | Backup/restore: 5 passed with WAL handling and manifest validation. Actual container-volume restart/restore remains untested locally; image smoke runs in hosted CI. |
-| 8 — performance | 100k and 1M NDJSON runs completed on clean `f9a4116`; details are in `V1_RELEASE_EVIDENCE.md`. These single-machine measurements are not an SLA. |
+| 8 — performance | 100k and 1M NDJSON runs completed on clean application SHA `2ff5f1d`; details are in `V1_RELEASE_EVIDENCE.md`. These single-machine measurements are not an SLA. |
 | 9 — container | Pinned Python base, non-root user, persistent `/data`, healthcheck, single worker, OCI source/build labels. Updated CI emits image config digest, UTC build date, Python and application versions; verify on exact-head hosted run. |
 | 10–13 — external gates | No authorized managed-host project/credentials, live enterprise connector credentials, or external AI credentials were found. No deployment or live external certification claimed. |
 | 14 — release evidence | Update `V1_RELEASE_EVIDENCE.md` after benchmark and exact-head hosted CI; keep final SHA and image evidence exact. |
 | 15 — tracker | Canonical workbook unavailable after repository/attachment/bounded Documents search; proposal recorded in `PROJECT_TRACKER_UPDATE.md`. |
-| 16 — independent review | Final independent review at the pushed exact head remains pending. |
+| 16 — independent review | H's re-review after the SQLite path fix at final application SHA remains pending. |
 | 17 — PR finalization and merge | Push final evidence, pass exact-head CI, resolve valid review threads, satisfy branch protection and independent approval, then merge as explicitly authorized by the user. Verify `main` and any resulting GitHub deployment status after merge. |
 
 ## External boundaries

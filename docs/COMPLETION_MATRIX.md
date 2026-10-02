@@ -8,11 +8,11 @@
 | PostgreSQL and MySQL | Implemented | Contract tests; disposable CI runtime tests passed at starting SHA | Repeat disposable service tests on final PR head |
 | SQL Server, Oracle, Snowflake, BigQuery, Redshift | Implemented | Deterministic mocked contract tests; BigQuery SDK client bug fixed | Authorized live services/credentials; production source policy remains fail-closed where enforcement is unverified |
 | Projects, recipes, dataset versions and persisted agent traces | Implemented | SQLite persistence and API tests | Verify exact source SHA via final hosted container run |
-| Production auth, role controls and approval | Implemented | Security/red-team tests, administrator/operator Playwright, exact one-use approval and non-consuming dry-run | Final exact-head CI and valid review-thread resolution |
+| Production auth, role controls and approval | Implemented | Security/red-team tests, administrator/operator Playwright, exact one-use approval and non-consuming dry-run; operators cannot probe targets, source-backed agent runs, or server-local SQLite schema files | Final exact-head CI and valid review-thread resolution |
 | Browser interface | Implemented | Actual HTTPS Uvicorn/Chromium; login, session, CSRF, dashboard, keyboard, responsive layout and secret non-reflection | Final exact-head CI |
 | Parquet | Implemented as optional runtime | Runtime tests pass in full local suite; pinned in production lock | Final exact-head dependency audit and image smoke |
 | Backup and restore | Implemented | Five tests cover SQLite WAL snapshot, integrity manifest, artifact relocation, locking and archive safety | Real container-volume restore remains untested |
-| Streaming and scale | Implemented for bounded single-table Python stream writers | Reproducible benchmark CLI; 100k/1M measurements pending | Run on integrated clean SHA; no production SLA claim |
+| Streaming and scale | Implemented for bounded single-table Python stream writers | Reproducible benchmark CLI; 100k/1M evidence recorded in `V1_RELEASE_EVIDENCE.md` | No production SLA claim |
 | Production container | Implemented | Pinned base, non-root user, one worker, persistent `/data`, health probe; CI records image evidence | Refresh build/smoke and image digest at final exact head |
 | Managed deployment | Configuration ready | External credential gate recorded | Authorized host, secrets, persistent volume, HTTPS endpoint and runtime verification |
 

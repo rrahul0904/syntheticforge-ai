@@ -4,7 +4,7 @@ Connector implementation, adapter contracts, disposable service tests, and live 
 
 ## Current integrated evidence
 
-The connector changes are integrated through code commit `bd0136f` (contract tests and BigQuery client fix). The full local suite passed later at `ab7c6644b692969217c2b4fcab2ed8fec008c3a3`; exact final PR-head evidence will be recorded in `V1_RELEASE_EVIDENCE.md` after hosted CI.
+The connector changes and nested-target fail-closed guard are integrated through code commit `2ff5f1d`; the full local suite passed at the later integrated code commit `7d25c12`. Exact final PR-head hosted evidence will be recorded in `V1_RELEASE_EVIDENCE.md` after the pushed run completes.
 
 | Connector | Implementation | Contract evidence | Runtime evidence | Live external state | Production source policy |
 |---|---|---|---|---|---|
