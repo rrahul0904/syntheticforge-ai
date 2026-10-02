@@ -19,3 +19,18 @@ Repository safety expectations:
 - keep production on one replica and one worker while SQLite remains authoritative;
 - mount and back up `/data`; make sure the mounted volume is writable by container UID 10001;
 - keep hosting credentials and generated hashes in a secret manager, never in the image or repository.
+
+## Defensive verification record
+
+On 2026-10-01, the local production-mode API/security slice passed with **41 tests passed** (one existing Starlette/httpx deprecation warning):
+
+```text
+pytest -q tests/test_red_team_security.py tests/test_production_security.py tests/test_completion_features.py tests/test_agentic.py
+41 passed, 1 warning
+```
+
+Coverage includes session rotation against a caller-supplied session cookie, expiry and revocation behavior, missing and invalid CSRF tokens, operator bearer-token privilege limits, production HTTP login rejection, required production configuration and single-worker/single-replica enforcement, explicit CORS origin validation and preflight handling, malformed and oversized schema requests, unsafe SQL identifiers, approval replay/mismatch/expiry and destructive-flag binding, and provider-key/connector-secret/sensitive-row redaction. A trusted CORS preflight receives an allow-origin response without a session; an untrusted origin receives no allow-origin response; the corresponding protected resource request still returns 401 without authentication.
+
+The SQLite schema-file input intentionally accepts a caller-supplied path and opens it read-only. Verification confirms it returns table metadata without copying row values. This is not a filesystem sandbox: anyone authorized to submit schema requests can request metadata for a SQLite file readable by the application process. Keep schema-input access within the trusted operator group and mount only data the service is allowed to inspect.
+
+These are local unit/API checks, not an external penetration test. They do not certify deployment proxy/TLS configuration, browser behavior on a live origin, production secrets management, third-party connector security, or regulatory compliance. CORS preflight validation is exercised against configured trusted and untrusted origins; no external origin or live deployment was tested. SQLite remains a single-worker, single-replica state store, and its data directory must be protected and backed up by the deployment operator.

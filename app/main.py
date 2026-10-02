@@ -82,7 +82,7 @@ async def observability_middleware(request:Request,call_next):
         if production_mode():headers["Strict-Transport-Security"]="max-age=31536000; includeSubDomains"
         return JSONResponse({"detail":detail},status_code=status_code,headers=headers)
     if production_mode():
-        if path not in {"/api/health","/api/readiness","/api/auth/login","/api/auth/session","/","/static/app.js","/static/styles.css"}:
+        if request.method!="OPTIONS" and path not in {"/api/health","/api/readiness","/api/auth/login","/api/auth/session","/","/static/app.js","/static/styles.css"}:
             identity=_authenticate(request)
             if identity is None:
                 return early_error("Authentication required",401)
