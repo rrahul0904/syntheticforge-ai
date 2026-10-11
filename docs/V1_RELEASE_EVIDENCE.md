@@ -1,16 +1,17 @@
 # v1.0.0-rc1 release evidence
 
-This record distinguishes local evidence, hosted candidate checks, and external gates that still require authorized credentials. The code/workflow run IDs below cover the current implementation; the evidence-doc commit receives its own final-head CI run before merge.
+This record distinguishes local evidence, hosted candidate checks, the merged release candidate, and external gates that require an authorized hosting account or service credentials.
 
 | Evidence | Result |
 |---|---|
-| Repository / PR | `rrahul0904/syntheticforge-ai`, PR #2, base `main` |
+| Repository / PR | `rrahul0904/syntheticforge-ai`, PR #2 merged to `main` |
 | Candidate | `1.0.0-rc1` |
 | Mission start head | `5e55c83243e742938776673abee96816ab1e75c6` |
 | Integrated application-code SHA | `7d25c124b09bc540c7e928de345c434640b8e3b4` |
+| Merged `main` SHA | `cde1b63f8a367e5ec5d6a50ed0ae9bddd78c14f3` |
 | Benchmark run SHA | `2ff5f1d7d76438f9805c253162d4907501344b5f`; clean working tree, exact SHA emitted by the benchmark tool. The later code change only tightens production authorization for SQLite schema imports. |
 | Local verification date | 2026-10-02 |
-| PR state | Open; code/workflow SHA `84be249c1e58c4f83b92132cb2129740f597fd91` passed push CI run `37023127940` and PR CI run `37023133621`; this evidence update is docs-only |
+| PR / merge state | PR #2 merged on 2026-10-02. Code/workflow SHA `84be249c1e58c4f83b92132cb2129740f597fd91` passed push CI run `37023127940` and PR CI run `37023133621` before merge. |
 | Full local `make verify` | **110 passed, 2 skipped, 1 warning** on Python 3.13.0 for code `7d25c12`. Skips are PostgreSQL/MySQL service integration tests without local DSNs. Warning is the existing Starlette/httpx deprecation. |
 | Compile / JS / shell / CLI | Passed through `make verify`: Python `compileall`, bundled Node `--check`, shell syntax, and CLI help |
 | SQLite source-to-target | Passed: 2 source tables, 50 generated rows, validation 100.0, target counts 25/25, zero broken FKs, source unchanged |
@@ -27,12 +28,16 @@ This record distinguishes local evidence, hosted candidate checks, and external 
 | 1M benchmark | Passed at `2ff5f1d`: 1,000,000 NDJSON rows, seed 2026, batch 10,000; 9.011902 s; 110,964.36 rows/s; peak RSS 40,247,296 bytes / 38.38 MiB; output 54,809,396 bytes; Python 3.13.0, macOS 26.5.2, x86_64, 12 CPUs. |
 | Dependency audit / secret scan | `pip-audit -r requirements-prod.lock` and Gitleaks passed at `84be249` in push run `37023127940` and PR run `37023133621` |
 | Production image / HTTP smoke | Passed at `84be249` in both runs. Source SHA `84be249c1e58c4f83b92132cb2129740f597fd91`; image ID/config digest `sha256:1de25cb33e61cc41661e69b58c70f6c158bb96573b488bef2afd6167c42e332c`; build timestamp `2026-10-02T14:54:11Z`; Python `3.12.14`; app `1.0.0rc1`. Image health, readiness, unauthenticated API rejection and UI smoke passed. |
-| Deployment / live URL | `DEPLOYMENT_READY_EXTERNAL_CREDENTIALS_REQUIRED`. No authorized host project or deployment credentials were available; no deployment or URL is claimed. |
+| Deployment / live URL | **BLOCKED_BY_HOST_ACCOUNT** as of 2026-10-11. An authorized Railway deployment was attempted through the connected account, but Railway rejected creation because the account trial has expired and a plan must be selected. No live URL is claimed. The application itself remains deployment-ready. |
 | External AI | Not live-tested; deterministic local operation is the supported fallback |
 | Tracker workbook | Not modified; no canonical workbook was present in the repo, attachment, or bounded Documents search. Proposal is in `PROJECT_TRACKER_UPDATE.md`. |
-| Independent review / review threads | Independent review at `7d25c12` found no remaining high or medium issues; both original GitHub review threads were fixed and are being resolved |
-| Merge | Explicitly authorized by the user; awaiting evidence-doc commit CI and final repository-state check |
+| Independent review / review threads | Independent review at `7d25c12` found no remaining high or medium issues; both original GitHub review threads were fixed and resolved before merge |
+| Merge | **COMPLETE** — PR #2 merged to `main` on 2026-10-02 |
+
+## Current release boundary
+
+The codebase is merged and production-container ready. The remaining product-launch gate is operational rather than implementation work: the connected Railway workspace must be on an active plan (or another authorized non-Vercel container host must be connected), after which the service needs its generated production secrets, one persistent `/data` volume, one replica/worker, an HTTPS domain, and the documented external smoke tests.
 
 ## Non-claims
 
-This candidate does not claim a managed deployment, public URL, live certification for unexecuted connectors, external AI certification, horizontal scaling, HIPAA, GDPR, or SOC 2 certification. SQLite remains the authoritative single-node state store. Local/browser tests and disposable CI services do not certify a customer or managed external environment.
+This candidate does not yet claim a managed deployment, public URL, live certification for unexecuted connectors, external AI certification, horizontal scaling, HIPAA, GDPR, or SOC 2 certification. SQLite remains the authoritative single-node state store. Local/browser tests and disposable CI services do not certify a customer or managed external environment.
