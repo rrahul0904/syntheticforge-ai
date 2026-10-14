@@ -80,6 +80,7 @@ def test_production_browser_login_generation_project_agent_and_logout(tmp_path: 
             username.fill("admin")
             password.fill("browser-test-password-with-32-characters")
             page.get_by_role("button", name="Sign in").click()
+            expect(login_dialog).not_to_be_visible()
             page.get_by_role("heading", name="Build production-shaped test data without exposing production data.").wait_for()
             expect(page.locator("#loginPassword")).to_have_value("")
             assert page.get_by_text("Capability health").is_visible()
