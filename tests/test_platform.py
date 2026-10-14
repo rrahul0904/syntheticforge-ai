@@ -191,3 +191,5 @@ def test_project_generation_persists_versioned_zip(tmp_path):
     r=client.post(f"/api/projects/{p['id']}/generate",json={"request":request})
     assert r.status_code==200,r.text
     d=r.json()["dataset"]; assert d["version"]==1 and d["exports"] and Path(d["exports"][0]).is_file()
+    artifact=client.get(f"/api/datasets/{d['id']}/artifact")
+    assert artifact.status_code==200 and artifact.headers["content-type"]=="application/zip" and artifact.content.startswith(b"PK")

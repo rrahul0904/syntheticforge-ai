@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
@@ -484,6 +484,16 @@ def list_datasets(project_id:str): return [d.model_dump(mode="json") for d in re
 def get_dataset(dataset_id:str):
     try:return repo().get_dataset(dataset_id).model_dump(mode="json")
     except KeyError as exc: raise HTTPException(status_code=404,detail="Dataset not found") from exc
+
+@app.get("/api/datasets/{dataset_id}/artifact")
+def dataset_artifact(dataset_id:str):
+    try:dataset=repo().get_dataset(dataset_id)
+    except KeyError as exc: raise HTTPException(status_code=404,detail="Dataset not found") from exc
+    if not dataset.exports:raise HTTPException(status_code=404,detail="Dataset artifact not found")
+    root=(repo().path.parent/"datasets"/dataset.id).resolve()
+    artifact=Path(dataset.exports[-1]).resolve()
+    if artifact.parent!=root or not artifact.is_file():raise HTTPException(status_code=404,detail="Dataset artifact not found")
+    return FileResponse(artifact,filename=artifact.name,media_type="application/zip")
 
 @app.get("/api/datasets/compare/{a_id}/{b_id}")
 def compare_datasets(a_id:str,b_id:str):
