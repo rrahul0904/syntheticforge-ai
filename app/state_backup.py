@@ -163,7 +163,12 @@ def restore_backup(archive: Path | str, destination: Path | str) -> Path:
     if target.exists() and any(target.iterdir()):
         raise FileExistsError(f"Restore destination must be absent or empty: {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="syntheticforge-restore-", dir=target.parent) as tmp:
+    # Mounted volumes may be a different filesystem from their parent. Stage
+    # inside an existing empty destination so the final atomic moves stay on
+    # the volume; for an absent destination, stage beside it so the directory
+    # itself can be atomically installed.
+    staging_parent = target if target.exists() else target.parent
+    with tempfile.TemporaryDirectory(prefix="syntheticforge-restore-", dir=staging_parent) as tmp:
         stage = Path(tmp) / "restored"
         stage.mkdir(mode=0o700)
         with zipfile.ZipFile(source) as zf:

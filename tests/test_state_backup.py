@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import errno
 import os
 import sqlite3
 import subprocess
@@ -67,6 +68,40 @@ def test_backup_restores_database_artifacts_and_relocated_export_references(tmp_
     assert run.state == "completed"
     assert Path(run.artifact_path or "") == relocated
     assert Path(run.artifact_path or "").read_bytes() == b"synthetic artifact bytes"
+
+
+def test_restore_stages_inside_existing_volume_destination(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    source = tmp_path / "source"
+    populated_state(source)
+    archive = tmp_path / "backup.zip"
+    create_backup(source, archive)
+    destination = tmp_path / "mounted-volume"
+    destination.mkdir()
+
+    original_replace = os.replace
+    resolved_destination = destination.resolve()
+
+    def reject_cross_device_move(src: str | os.PathLike[str], dst: str | os.PathLike[str]) -> None:
+        source_path = Path(src).resolve()
+        target_path = Path(dst).resolve()
+        try:
+            target_path.relative_to(resolved_destination)
+            target_is_volume = True
+        except ValueError:
+            target_is_volume = False
+        try:
+            source_path.relative_to(resolved_destination)
+            source_is_volume = True
+        except ValueError:
+            source_is_volume = False
+        if target_is_volume and not source_is_volume:
+            raise OSError(errno.EXDEV, "simulated cross-device move")
+        original_replace(src, dst)
+
+    monkeypatch.setattr("app.state_backup.os.replace", reject_cross_device_move)
+    restore_backup(archive, destination)
+    assert (destination / "state.db").is_file()
+    assert (destination / "datasets").is_dir()
 
 
 def test_backup_refuses_running_production_repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
