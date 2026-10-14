@@ -220,6 +220,19 @@ def restore_backup(archive: Path | str, destination: Path | str) -> Path:
                     if changed:
                         payload["exports"] = exports
                         conn.execute("UPDATE datasets SET payload_json=? WHERE id=?", (json.dumps(payload), row[0]))
+                for row in conn.execute("SELECT id,payload_json FROM agent_runs"):
+                    payload = json.loads(row[1])
+                    artifact = payload.get("artifact_path")
+                    if not artifact:
+                        continue
+                    try:
+                        relative = Path(artifact).resolve().relative_to(old_root)
+                    except ValueError as exc:
+                        raise ValueError("Agent artifact reference is outside the backed-up state directory") from exc
+                    if not (stage / relative).is_file():
+                        raise ValueError("Backup is missing an agent artifact referenced by state")
+                    payload["artifact_path"] = str(target / relative)
+                    conn.execute("UPDATE agent_runs SET payload_json=? WHERE id=?", (json.dumps(payload), row[0]))
         finally:
             conn.close()
         _make_database_portable(db_path)

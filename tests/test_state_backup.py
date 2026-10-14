@@ -6,11 +6,12 @@ import sqlite3
 import subprocess
 import sys
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
-from app.models import ProjectCreateRequest
+from app.models import AgentRunRecord, ProjectCreateRequest
 from app.persistence import Repository
 from app.state_backup import create_backup, restore_backup
 
@@ -22,6 +23,12 @@ def populated_state(root: Path) -> tuple[str, str]:
         project_id=project["id"], seed=7, schema={"tables": []}, rules={}, row_counts={}, validation={"passed": True}
     )
     artifact = repo.save_dataset_artifact(dataset.id, b"synthetic artifact bytes", "fixture.zip")
+    now = datetime.now(timezone.utc)
+    repo.upsert_agent_run(AgentRunRecord(
+        id="backup-agent-run", goal="backup fixture", project_id=project["id"], state="completed",
+        current_step="completed", request={}, dataset_id=dataset.id, artifact_path=artifact,
+        created_at=now, updated_at=now,
+    ))
     return dataset.id, artifact
 
 
@@ -56,6 +63,10 @@ def test_backup_restores_database_artifacts_and_relocated_export_references(tmp_
     relocated = Path(dataset.exports[0])
     assert relocated == restored.resolve() / "datasets" / dataset_id / "fixture.zip"
     assert relocated.read_bytes() == b"synthetic artifact bytes"
+    run = repo.get_agent_run("backup-agent-run")
+    assert run.state == "completed"
+    assert Path(run.artifact_path or "") == relocated
+    assert Path(run.artifact_path or "").read_bytes() == b"synthetic artifact bytes"
 
 
 def test_backup_refuses_running_production_repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
