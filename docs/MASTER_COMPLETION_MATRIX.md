@@ -1,5 +1,20 @@
 # SyntheticForge AI — Master Completion Matrix
 
+## Current implementation checkpoint — 2026-10-14
+
+Current code-and-test SHA: `12838b97a4cc9a0ac5a780aa4f2901ecc5b2ac21` on `codex/production-completion-phase0`, PR #4. The original audit and historical evidence below are retained for context; this checkpoint is the current status.
+
+| Area | Current status | Evidence and boundary |
+|---|---|---|
+| Test suite and local checks | PASS | `make verify` test phase: 114 passed, 2 skipped, no warnings. PostgreSQL/MySQL skips are due to absent local DSNs; current-head CI is running. Compileall, JavaScript syntax, shell syntax, CLI help, and SQLite source/target demo also passed. |
+| Job recovery | PASS for single-node SQLite | Real app processes verified queued work resumes and active work is marked failed after restart; completed records persist. No external durable queue or horizontal workers. |
+| Persistent-volume lifecycle | PASS in local Docker | Exact-source image `syntheticforge-ai:12838b9`, image ID `sha256:203211d40193da4a350f54f0bfb13543d16bd9e563411062efaeeae7913e062b`, built 2026-10-14. Named `/data` volume retained projects, recipes, datasets, ZIP exports, jobs, agent trace/artifact across container replacement. Backup restored into a separate empty named volume and the restarted app read all records/artifacts. |
+| Production-mode runtime | PASS locally | The exact-source image accepted authenticated API requests, rejected anonymous API access, reached readiness, generated/downloaded datasets, and completed an agent run. This is local container evidence, not a hosted deployment. |
+| Public managed deployment | BLOCKED_EXTERNAL | No active authorized production host/account or public endpoint is available. Do not claim deployment or public availability. |
+| Utility Mode and billing | INCOMPLETE | Utility Mode is not a complete workspace; subscription, metering and entitlement paths are not implemented. A self-hosted pilot can exercise current generation workflows, but the full paid SaaS mission is not complete. |
+| Live external connectors and AI providers | NOT CERTIFIED | Disposable PostgreSQL/MySQL CI integrations pass; no authorized external enterprise connector or provider credentials were used for live certification. |
+
+
 This matrix began with the audit of source SHA `9db842e6836dafcc4ea41e0138cbbb688f6fb3c9` on 2026-10-13 and was updated against tested code-and-test SHA `6c5945c` on 2026-10-14. `PASS` means the capability has repeatable evidence within the stated boundary; it does not imply live certification or SaaS launch readiness. Where the evidence is historical, the exact tested SHA is retained in the evidence reference.
 
 | Capability | Implementation status | Automated tests | Integration/runtime verification | Browser verification | Documentation | Production readiness | Blocker | Evidence (baseline SHA) |

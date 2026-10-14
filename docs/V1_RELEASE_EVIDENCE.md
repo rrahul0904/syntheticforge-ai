@@ -1,5 +1,16 @@
 # v1.0.0-rc1 release evidence
 
+## Production completion execution — 2026-10-14
+
+- Current implementation source: `12838b97a4cc9a0ac5a780aa4f2901ecc5b2ac21` on PR #4 (`codex/production-completion-phase0`).
+- Local test suite: **114 passed, 2 skipped, no warnings**. The two skips require PostgreSQL/MySQL DSNs; current-head hosted CI is being checked separately.
+- All verification commands equivalent to `make verify` passed: Python compileall, JavaScript syntax, shell syntax, SQLite source-to-target demo (50 generated rows, quality 100, zero broken foreign keys, source unchanged), and CLI help.
+- Exact-source image: `syntheticforge-ai:12838b9`, image ID `sha256:203211d40193da4a350f54f0bfb13543d16bd9e563411062efaeeae7913e062b`, built `2026-10-14T20:08:37Z`, revision label matched the source SHA.
+- Local Docker named-volume test passed against that exact image: production auth gate/readiness, project and recipe persistence, generated dataset and ZIP download, completed job, agent trace and artifact, queued job resumed after container replacement, active job failed with restart diagnosis, and audit-backed restart behavior covered by recovery tests.
+- Backup/restore passed into a different, initially empty Docker named volume. Dataset and agent artifact paths were readable from the restored app. This test found and fixed cross-filesystem restore staging; regression test simulates `EXDEV`.
+- These checks do not constitute hosted deployment, public URL, external provider certification, or SaaS launch readiness. Managed deployment remains blocked because no authorized active hosting plan/account is available. Utility Mode and billing remain incomplete.
+
+
 This record distinguishes local evidence, hosted candidate checks, the merged release candidate, and external gates that require an authorized hosting account or service credentials.
 
 | Evidence | Result |
