@@ -80,8 +80,10 @@ class AgentExecutor:
         return record
 
     def cancel(self, run_id: str) -> AgentRunRecord:
-        self._cancelled.add(run_id)
         run = self.repo.get_agent_run(run_id)
+        if run.state in {"completed", "failed", "cancelled", "awaiting_approval"}:
+            return run
+        self._cancelled.add(run_id)
         run.state = "cancelled"; run.current_step = "cancelled"; run.updated_at = now()
         self._trace(run, "result", "cancelled", "Cancellation requested by user")
         self.repo.upsert_agent_run(run)
@@ -124,6 +126,8 @@ class AgentExecutor:
         return tables
 
     def execute(self, run_id: str, req: AgentRunCreateRequest) -> AgentRunRecord:
+        if not self.repo.claim_agent_run(run_id):
+            return self.repo.get_agent_run(run_id)
         run = self.repo.get_agent_run(run_id)
         connector = None
         profiles: dict[str, Any] = {}

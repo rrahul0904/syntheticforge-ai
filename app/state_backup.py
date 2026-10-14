@@ -163,7 +163,12 @@ def restore_backup(archive: Path | str, destination: Path | str) -> Path:
     if target.exists() and any(target.iterdir()):
         raise FileExistsError(f"Restore destination must be absent or empty: {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="syntheticforge-restore-", dir=target.parent) as tmp:
+    # Mounted volumes may be a different filesystem from their parent. Stage
+    # inside an existing empty destination so the final atomic moves stay on
+    # the volume; for an absent destination, stage beside it so the directory
+    # itself can be atomically installed.
+    staging_parent = target if target.exists() else target.parent
+    with tempfile.TemporaryDirectory(prefix="syntheticforge-restore-", dir=staging_parent) as tmp:
         stage = Path(tmp) / "restored"
         stage.mkdir(mode=0o700)
         with zipfile.ZipFile(source) as zf:
@@ -220,6 +225,19 @@ def restore_backup(archive: Path | str, destination: Path | str) -> Path:
                     if changed:
                         payload["exports"] = exports
                         conn.execute("UPDATE datasets SET payload_json=? WHERE id=?", (json.dumps(payload), row[0]))
+                for row in conn.execute("SELECT id,payload_json FROM agent_runs"):
+                    payload = json.loads(row[1])
+                    artifact = payload.get("artifact_path")
+                    if not artifact:
+                        continue
+                    try:
+                        relative = Path(artifact).resolve().relative_to(old_root)
+                    except ValueError as exc:
+                        raise ValueError("Agent artifact reference is outside the backed-up state directory") from exc
+                    if not (stage / relative).is_file():
+                        raise ValueError("Backup is missing an agent artifact referenced by state")
+                    payload["artifact_path"] = str(target / relative)
+                    conn.execute("UPDATE agent_runs SET payload_json=? WHERE id=?", (json.dumps(payload), row[0]))
         finally:
             conn.close()
         _make_database_portable(db_path)

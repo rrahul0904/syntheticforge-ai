@@ -3,13 +3,14 @@ from __future__ import annotations
 import json
 import os
 import time
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
@@ -42,7 +43,24 @@ BASE = Path(__file__).resolve().parent
 @asynccontextmanager
 async def lifespan(_app):
     validate_production_environment()
-    repo()
+    repository=repo()
+    queued_jobs,queued_runs=repository.recover_interrupted_work()
+    for job in queued_jobs:
+        try:
+            payload=JobGenerateRequest.model_validate(job.payload)
+        except Exception as exc:
+            jobs().update(job.id,state="failed",step="failed",error=f"Queued request could not be recovered: {exc}")
+            continue
+        task=asyncio.create_task(asyncio.to_thread(_run_generation_job,job.id,payload))
+        _recovery_tasks.add(task); task.add_done_callback(_recovery_task_done)
+    for run in queued_runs:
+        try:
+            payload=AgentRunCreateRequest.model_validate(run.request)
+        except Exception as exc:
+            repository.fail_queued_agent_run(run.id,f"Queued request could not be recovered: {safe_error_text(str(exc))}")
+            continue
+        task=asyncio.create_task(asyncio.to_thread(_run_agent,run.id,payload))
+        _recovery_tasks.add(task); task.add_done_callback(_recovery_task_done)
     yield
 
 app = FastAPI(title="SyntheticForge AI", version="1.0.0-rc1", description="Local-first agentic synthetic test-data platform", lifespan=lifespan,docs_url=None if production_mode() else "/docs",redoc_url=None if production_mode() else "/redoc",openapi_url=None if production_mode() else "/openapi.json")
@@ -52,6 +70,13 @@ app.add_middleware(CORSMiddleware,allow_origins=allowed_origins,allow_credential
 
 _repo: Repository | None = None
 _agent_executor: AgentExecutor | None = None
+_recovery_tasks: set[asyncio.Task] = set()
+
+def _recovery_task_done(task:asyncio.Task)->None:
+    _recovery_tasks.discard(task)
+    if task.cancelled():return
+    error=task.exception()
+    if error is not None:log_event("work.recovery.dispatch_failed",error=safe_error_text(str(error)))
 
 def repo()->Repository:
     global _repo
@@ -460,6 +485,16 @@ def get_dataset(dataset_id:str):
     try:return repo().get_dataset(dataset_id).model_dump(mode="json")
     except KeyError as exc: raise HTTPException(status_code=404,detail="Dataset not found") from exc
 
+@app.get("/api/datasets/{dataset_id}/artifact")
+def dataset_artifact(dataset_id:str):
+    try:dataset=repo().get_dataset(dataset_id)
+    except KeyError as exc: raise HTTPException(status_code=404,detail="Dataset not found") from exc
+    if not dataset.exports:raise HTTPException(status_code=404,detail="Dataset artifact not found")
+    root=(repo().path.parent/"datasets"/dataset.id).resolve()
+    artifact=Path(dataset.exports[-1]).resolve()
+    if artifact.parent!=root or not artifact.is_file():raise HTTPException(status_code=404,detail="Dataset artifact not found")
+    return FileResponse(artifact,filename=artifact.name,media_type="application/zip")
+
 @app.get("/api/datasets/compare/{a_id}/{b_id}")
 def compare_datasets(a_id:str,b_id:str):
     try:return repo().compare_datasets(a_id,b_id)
@@ -472,6 +507,7 @@ def _run_generation_job(job_id:str,payload:JobGenerateRequest):
         update(state="generating",progress=20,step="generating",log="Generating relational dataset")
         if cancelled():return None
         result=generate_system(payload.request)
+        if cancelled():return None
         update(state="validating",progress=75,step="validating",generated_rows=sum(len(t.rows) for t in result.tables),log=f"Quality score: {result.validation.quality_score}")
         if payload.project_id:
             dataset=repo().create_dataset(payload.project_id,payload.request.seed,[t.model_dump(mode="json") for t in payload.request.tables],{"scenario":payload.request.scenario},{f"{t.schema_name}.{t.name}":len(t.rows) for t in result.tables},result.validation.model_dump(mode="json"))
