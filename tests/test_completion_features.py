@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import uuid
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from app.jobs import JobManager
 from app.loaders import load_table
 from app.main import app
 from app.models import (
-    ColumnSpec, ColumnStatistics, ConnectorConfig, CorrelationSpec, GeneratedTable,
+    AgentRunRecord, ColumnSpec, ColumnStatistics, ConnectorConfig, CorrelationSpec, GeneratedTable,
     ParseSchemaRequest, ProjectCreateRequest, SystemGenerateRequest, TableSpec,
 )
 from app.persistence import Repository
@@ -101,6 +102,49 @@ def test_job_lifecycle_persists_logs_and_failure_without_secrets(tmp_path:Path):
     failed=manager.create(p['id'])
     with pytest.raises(RuntimeError): manager.run(failed.id,lambda u,c: (_ for _ in ()).throw(RuntimeError('password=supersecret failed')))
     f=repo.get_job(failed.id); assert f.state=='failed' and 'supersecret' not in (f.error or '') and '***' in (f.error or '')
+
+
+def test_restart_recovery_fails_uncertain_work_and_returns_only_safe_queued_records(tmp_path:Path):
+    from datetime import datetime, timezone
+    repo=Repository(tmp_path/'state.db')
+    manager=JobManager(repo)
+    queued=manager.create(payload={'request':{}})
+    active=manager.create(payload={'request':{}})
+    assert repo.claim_job(active.id)
+    completed=manager.create(payload={'request':{}})
+    manager.run(completed.id,lambda update,cancelled: 'done')
+
+    def agent(state='queued',request=None):
+        now=datetime.now(timezone.utc)
+        run=AgentRunRecord(id=uuid.uuid4().hex,goal='create a small test system',state=state,current_step=state,request=request or {'goal':'create a small test system','ai_planning':False},created_at=now,updated_at=now)
+        repo.upsert_agent_run(run)
+        return run
+    safe_run=agent()
+    source_run=agent(request={'goal':'inspect source','source_config':{'connector':'postgresql','password':'***'}})
+    active_run=agent(state='running')
+    completed_run=agent(state='completed')
+
+    queued_jobs,queued_runs=repo.recover_interrupted_work()
+    assert [job.id for job in queued_jobs]==[queued.id]
+    assert [run.id for run in queued_runs]==[safe_run.id]
+    assert repo.get_job(active.id).state=='failed'
+    assert 'application restart' in (repo.get_job(active.id).error or '')
+    assert repo.get_job(completed.id).state=='completed'
+    assert repo.get_agent_run(active_run.id).state=='failed'
+    assert 'application restart' in (repo.get_agent_run(active_run.id).error or '')
+    assert repo.get_agent_run(source_run.id).state=='failed'
+    assert 'credentials are not persisted' in (repo.get_agent_run(source_run.id).error or '')
+    assert repo.get_agent_run(completed_run.id).state=='completed'
+
+
+def test_job_claim_is_atomic_and_terminal_cancel_cannot_be_overwritten(tmp_path:Path):
+    repo=Repository(tmp_path/'state.db'); manager=JobManager(repo); job=manager.create()
+    assert repo.claim_job(job.id)
+    assert not repo.claim_job(job.id)
+    cancelled=manager.cancel(job.id)
+    assert cancelled.state=='cancelled'
+    manager.update(job.id,state='completed',step='late-worker')
+    assert repo.get_job(job.id).state=='cancelled'
 
 
 def test_connector_error_redacts_configured_secret(tmp_path:Path):
