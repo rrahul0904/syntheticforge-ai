@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import AgentRunRecord, DatasetRecord, JobRecord, ProjectCreateRequest, RecipeSpec
-from .security import redact_secrets, token_hash
+from .security import redact_secrets, safe_error_text, token_hash
 
 SCHEMA_VERSION=2
 
@@ -154,7 +154,83 @@ class Repository:
     def upsert_job(self,job:JobRecord)->None:
         data=redact_secrets(job.payload); logs=[str(x)[:2000] for x in job.logs[-500:]]
         with self.connect() as c:
-            c.execute("INSERT OR REPLACE INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)",[job.id,job.project_id,job.state,job.progress,job.current_step,job.generated_rows,job.error,json.dumps(logs),json.dumps(data),job.created_at.isoformat(),job.updated_at.isoformat()])
+            # Do not let a late worker replace a cancellation or another terminal result.
+            c.execute("""INSERT INTO jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,state=excluded.state,
+                progress=excluded.progress,current_step=excluded.current_step,generated_rows=excluded.generated_rows,
+                error=excluded.error,logs_json=excluded.logs_json,payload_json=excluded.payload_json,updated_at=excluded.updated_at
+                WHERE jobs.state NOT IN ('completed','failed','cancelled') OR excluded.state=jobs.state""",
+                [job.id,job.project_id,job.state,job.progress,job.current_step,job.generated_rows,job.error,json.dumps(logs),json.dumps(data),job.created_at.isoformat(),job.updated_at.isoformat()])
+
+    def claim_job(self, job_id: str) -> bool:
+        """Atomically claim a queued job so duplicate dispatches cannot execute it twice."""
+        with self.connect() as c:
+            cur=c.execute("UPDATE jobs SET state='generating',current_step='starting',progress=1,updated_at=? WHERE id=? AND state='queued'",[utcnow().isoformat(),job_id])
+            return cur.rowcount==1
+
+    def recover_interrupted_work(self) -> tuple[list[JobRecord], list[AgentRunRecord]]:
+        """Fail uncertain active work and return safe, still-queued records for dispatch."""
+        now=utcnow().isoformat()
+        with self.connect() as c:
+            c.execute("BEGIN IMMEDIATE")
+            def audit_recovery(event:str, resource:str, details:dict[str,Any])->None:
+                c.execute("INSERT INTO audit_events(created_at,event,actor,resource,details_json) VALUES(?,?,?,?,?)",[now,event,"system",resource,json.dumps(redact_secrets(details))])
+
+            interrupted_error='Interrupted by application restart; retry explicitly to avoid replaying uncertain work'
+            active_jobs=c.execute("SELECT id,payload_json FROM jobs WHERE state IN ('profiling','modeling','generating','validating','exporting','loading')").fetchall()
+            for row in active_jobs:
+                try: payload=json.loads(row['payload_json'])
+                except (TypeError,ValueError): payload={}
+                if not isinstance(payload,dict):payload={}
+                c.execute("UPDATE jobs SET state='failed',current_step='interrupted',error=?,payload_json=?,updated_at=? WHERE id=? AND state IN ('profiling','modeling','generating','validating','exporting','loading')",[interrupted_error,json.dumps(payload),now,row['id']])
+                audit_recovery('job.recovery_interrupted',row['id'],{'previous_state':'active','policy':'mark_failed_retryable','reason':'application_restart'})
+
+            jobs=[]
+            rows=c.execute("SELECT * FROM jobs WHERE state='queued' ORDER BY created_at").fetchall()
+            for row in rows:
+                try:
+                    payload=json.loads(row['payload_json'])
+                    logs=json.loads(row['logs_json'])
+                    if not isinstance(payload,dict) or not isinstance(logs,list):raise ValueError('invalid payload or logs shape')
+                    job=JobRecord(id=row['id'],project_id=row['project_id'],state=row['state'],progress=row['progress'],current_step=row['current_step'],generated_rows=row['generated_rows'],error=row['error'],logs=logs,payload=payload,created_at=datetime.fromisoformat(row['created_at']),updated_at=datetime.fromisoformat(row['updated_at']))
+                except (TypeError,ValueError,KeyError) as exc:
+                    message=f'Queued job recovery rejected corrupt or incomplete state: {safe_error_text(str(exc))}'
+                    c.execute("UPDATE jobs SET state='failed',current_step='recovery_failed',error=?,payload_json='{}',logs_json='[]',updated_at=? WHERE id=? AND state='queued'",[message,now,row['id']])
+                    audit_recovery('job.recovery_rejected',row['id'],{'policy':'manual_intervention','reason':'corrupt_or_incomplete_state'})
+                    continue
+                jobs.append(job)
+                audit_recovery('job.recovery_queued',row['id'],{'policy':'safe_to_resume','reason':'persisted_queued_state'})
+
+            active=c.execute("SELECT id,payload_json FROM agent_runs WHERE state IN ('planning','running','repairing')").fetchall()
+            for row in active:
+                try:payload=json.loads(row['payload_json'])
+                except (TypeError,ValueError):payload={}
+                if not isinstance(payload,dict):payload={}
+                payload.update({'id':row['id'],'state':'failed','current_step':'interrupted','error':interrupted_error,'updated_at':now})
+                c.execute("UPDATE agent_runs SET state='failed',current_step='interrupted',payload_json=?,updated_at=? WHERE id=? AND state IN ('planning','running','repairing')",[json.dumps(payload),now,row['id']])
+                audit_recovery('agent_run.recovery_interrupted',row['id'],{'policy':'mark_failed_retryable','reason':'application_restart'})
+            queued=c.execute("SELECT id,payload_json FROM agent_runs WHERE state='queued' ORDER BY created_at").fetchall()
+            safe_runs=[]
+            for row in queued:
+                try:payload=json.loads(row['payload_json'])
+                except (TypeError,ValueError):payload={}
+                if not isinstance(payload,dict):payload={}
+                if not payload.get('id'):payload['id']=row['id']
+                request=payload.get('request') or {}
+                if request.get('source_config'):
+                    payload['state']='failed'; payload['current_step']='interrupted'; payload['error']='Queued source-backed run cannot resume because credentials are not persisted; create a new run'; payload['updated_at']=now
+                    c.execute("UPDATE agent_runs SET state='failed',current_step='interrupted',payload_json=?,updated_at=? WHERE id=? AND state='queued'",[json.dumps(payload),now,row['id']])
+                    audit_recovery('agent_run.recovery_rejected',row['id'],{'policy':'manual_intervention','reason':'source_credentials_not_persisted'})
+                else:
+                    try:
+                        safe_runs.append(AgentRunRecord.model_validate(payload))
+                    except Exception as exc:
+                        payload.update({'state':'failed','current_step':'recovery_failed','error':f'Queued agent recovery rejected corrupt or incomplete state: {safe_error_text(str(exc))}','updated_at':now})
+                        c.execute("UPDATE agent_runs SET state='failed',current_step='recovery_failed',payload_json=?,updated_at=? WHERE id=? AND state='queued'",[json.dumps(payload),now,row['id']])
+                        audit_recovery('agent_run.recovery_rejected',row['id'],{'policy':'manual_intervention','reason':'corrupt_or_incomplete_state'})
+                        continue
+                    audit_recovery('agent_run.recovery_queued',row['id'],{'policy':'safe_to_resume','reason':'source_free_queued_state'})
+        return jobs,safe_runs
 
     def get_job(self,jid:str)->JobRecord:
         with self.connect() as c: r=c.execute("SELECT * FROM jobs WHERE id=?",[jid]).fetchone()
@@ -171,9 +247,33 @@ class Repository:
         payload=redact_secrets(run.model_dump(mode="json"))
         with self.connect() as c:
             c.execute(
-                "INSERT OR REPLACE INTO agent_runs(id,project_id,state,current_step,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+                """INSERT INTO agent_runs(id,project_id,state,current_step,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?)
+                ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,state=excluded.state,
+                current_step=excluded.current_step,payload_json=excluded.payload_json,updated_at=excluded.updated_at
+                WHERE agent_runs.state NOT IN ('completed','failed','cancelled','awaiting_approval')
+                   OR excluded.state=agent_runs.state""",
                 [run.id,run.project_id,run.state,run.current_step,json.dumps(payload),run.created_at.isoformat(),run.updated_at.isoformat()]
             )
+
+    def claim_agent_run(self, run_id: str) -> bool:
+        """Atomically claim a queued source-free agent run for a single executor."""
+        with self.connect() as c:
+            row=c.execute("SELECT payload_json FROM agent_runs WHERE id=? AND state='queued'",[run_id]).fetchone()
+            if not row:return False
+            payload=json.loads(row['payload_json'])
+            if (payload.get('request') or {}).get('source_config'):
+                return False
+            now=utcnow().isoformat(); payload['state']='planning'; payload['current_step']='planning'; payload['updated_at']=now
+            cur=c.execute("UPDATE agent_runs SET state='planning',current_step='planning',payload_json=?,updated_at=? WHERE id=? AND state='queued'",[json.dumps(payload),now,run_id])
+            return cur.rowcount==1
+
+    def fail_queued_agent_run(self, run_id: str, error: str) -> None:
+        with self.connect() as c:
+            row=c.execute("SELECT payload_json FROM agent_runs WHERE id=? AND state='queued'",[run_id]).fetchone()
+            if not row:return
+            payload=json.loads(row['payload_json']); now=utcnow().isoformat()
+            payload['state']='failed'; payload['current_step']='failed'; payload['error']=error; payload['updated_at']=now
+            c.execute("UPDATE agent_runs SET state='failed',current_step='failed',payload_json=?,updated_at=? WHERE id=? AND state='queued'",[json.dumps(payload),now,run_id])
 
     def get_agent_run(self,run_id:str)->AgentRunRecord:
         with self.connect() as c:

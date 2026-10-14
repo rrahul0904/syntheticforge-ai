@@ -32,6 +32,9 @@ class JobManager:
         job.updated_at=now(); self.repo.upsert_job(job); return job
 
     def cancel(self,jid:str)->JobRecord:
+        current=self.repo.get_job(jid)
+        if current.state in {"completed","failed","cancelled"}:
+            return current
         with self._lock: self._cancelled.add(jid)
         return self.update(jid,state="cancelled",step="cancelled",log="Cancellation requested")
 
@@ -39,8 +42,9 @@ class JobManager:
         with self._lock: return jid in self._cancelled
 
     def run(self,jid:str,fn:Callable[[Callable[...,JobRecord],Callable[[],bool]],Any])->Any:
+        if not self.repo.claim_job(jid):
+            return None
         try:
-            self.update(jid,state="generating",progress=1,step="starting")
             result=fn(lambda **kw:self.update(jid,**kw),lambda:self.is_cancelled(jid))
             if self.is_cancelled(jid): self.update(jid,state="cancelled",step="cancelled")
             else: self.update(jid,state="completed",progress=100,step="completed")
